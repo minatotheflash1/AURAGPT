@@ -9,14 +9,13 @@ const crypto = require('crypto');
 
 dotenv.config();
 const app = express();
-app.use(express.json({ limit: '50mb' })); // ফাইল আপলোডের জন্য লিমিট বাড়ানো হলো
+app.use(express.json({ limit: '50mb' }));
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
-// --- অটোমেটিক ডাটাবেস টেবিল তৈরি ---
 async function initializeDatabase() {
     try {
         await pool.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(100), email VARCHAR(100) UNIQUE, phone VARCHAR(20), dob DATE, password VARCHAR(255), plan VARCHAR(20) DEFAULT 'FREE', badge VARCHAR(20) DEFAULT 'FREE', profile_pic TEXT, msg_count INT DEFAULT 0, video_count INT DEFAULT 0, limit_reset_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, plan_expires_at TIMESTAMP, role VARCHAR(20) DEFAULT 'user');`);
@@ -29,7 +28,7 @@ async function initializeDatabase() {
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS badge VARCHAR(20) DEFAULT 'FREE';`).catch(()=>{});
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_pic TEXT;`).catch(()=>{});
         
-        console.log("✅ Database ready with Badges, Profile Pics & Replicate API Support!");
+        console.log("✅ Database ready!");
     } catch (err) { 
         console.error("❌ DB init error:", err); 
     }
@@ -44,14 +43,12 @@ const transporter = nodemailer.createTransport({
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
 });
 
-// --- Routes ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'register.html')));
 app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/logo.png', (req, res) => res.sendFile(path.join(__dirname, 'logo.png')));
 
-// --- Authentication APIs ---
 app.post('/api/send-otp', async (req, res) => {
     const { email } = req.body;
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -87,13 +84,11 @@ app.post('/api/login', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Server error" }); }
 });
 
-// --- User Status & Profiles ---
 app.get('/api/user/status', async (req, res) => {
     const { email } = req.query;
     try {
         let user = (await pool.query('SELECT name, plan, badge, profile_pic, msg_count, video_count, plan_expires_at FROM users WHERE email = $1', [email])).rows[0];
         
-        // Auto-revert to FREE if 30 days passed (Except Admin/Owner)
         if(user && user.plan !== 'FREE' && user.plan_expires_at && new Date() > new Date(user.plan_expires_at)) {
             if(!['Admin', 'Owner'].includes(user.badge)) {
                 await pool.query(`UPDATE users SET plan = 'FREE', badge = 'FREE', plan_expires_at = NULL WHERE email = $1`, [email]);
@@ -120,7 +115,6 @@ app.get('/api/leaderboard', async (req, res) => {
     } catch (e) { res.status(500).json([]); }
 });
 
-// --- CORE AI LOGIC (Text & Video) ---
 app.post('/api/request', async (req, res) => {
     let { prompt, type, userEmail, sessionId, modelChoice } = req.body;
     if (!sessionId) sessionId = crypto.randomUUID();
@@ -130,7 +124,6 @@ app.post('/api/request', async (req, res) => {
         let user = userQuery.rows[0];
         if(!user) return res.status(404).json({ error: "User not found" });
 
-        // Subscription validation for Pro model
         if (modelChoice === 'pro' && !['PLUS', 'PRO', 'Admin', 'Owner'].includes(user.badge)) {
             return res.status(403).json({ reply: "✨ Pro model requires PLUS or PRO plan. Please upgrade your account." });
         }
@@ -142,7 +135,6 @@ app.post('/api/request', async (req, res) => {
 
         if (user.plan === 'FREE' && user.badge === 'FREE' && user.msg_count >= 100) return res.status(403).json({ reply: "Free limit reached. Wait 2 days or upgrade." });
         
-        // --- TEXT / PHOTO (DeepSeek) ---
         if (type === 'chat' || type === 'photo') {
             const creatorInfo = `Identity: Your creator is Ononto Hasan from Mymensingh. He is a Computer Trainer, Designer, Developer, and Teacher at BRAC SDF IST Dept. He owns the FB page "Toxic naaa?" with 64k+ followers. You are AuraGPT. If asked about your creator, give a proud summary. Be professional but helpful.`;
 
@@ -167,14 +159,11 @@ app.post('/api/request', async (req, res) => {
             await pool.query(`INSERT INTO chat_history (session_id, user_email, type, prompt, reply) VALUES ($1, $2, $3, $4, $5)`, [sessionId, userEmail, type, prompt, reply]);
             res.json({ reply, sessionId }); 
         } 
-        // --- VIDEO (Replicate Text-to-Video API) ---
         else if (type === 'video') {
             if (user.plan === 'FREE' && user.badge === 'FREE') return res.status(403).json({ reply: "Video generation requires at least AURAGPT GO." });
             
             try {
-                // Replicate API Call for Video Generation (Using Hotshot-XL for text-to-video)
                 const repRes = await axios.post('https://api.replicate.com/v1/predictions', {
-                    // Version hash for lucataco/hotshot-xl (Fast text-to-video model)
                     version: "8ce33a01729f3dcc028f804c8651c6c5188f572621183181822c98d6268393cb",
                     input: {
                         prompt: prompt,
@@ -183,7 +172,7 @@ app.post('/api/request', async (req, res) => {
                     }
                 }, { 
                     headers: { 
-                        'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+                        'Authorization': `Bearer ${process.env.REPLICATE_API_TOKEN}`,
                         'Content-Type': 'application/json'
                     }
                 });
@@ -197,7 +186,16 @@ app.post('/api/request', async (req, res) => {
                 res.json({ id: repRes.data.id, sessionId });
             } catch (apiErr) { 
                 console.error("Replicate API Error:", apiErr.response?.data || apiErr.message);
-                res.status(500).json({ reply: "Replicate Video API Error. Check Token." }); 
+                
+                // Catch exact error details
+                let exactError = "Unknown Error";
+                if(apiErr.response && apiErr.response.data) {
+                    exactError = apiErr.response.data.detail || apiErr.response.data.error || JSON.stringify(apiErr.response.data);
+                } else {
+                    exactError = apiErr.message;
+                }
+                
+                res.status(500).json({ reply: `Replicate Error: ${exactError}` }); 
             }
         }
     } catch (error) { 
@@ -205,7 +203,6 @@ app.post('/api/request', async (req, res) => {
     }
 });
 
-// --- Chat History & Payments ---
 app.get('/api/history/sessions', async (req, res) => {
     const { email } = req.query;
     const result = await pool.query(`SELECT DISTINCT ON (session_id) session_id, prompt as title, created_at, type FROM chat_history WHERE user_email = $1 ORDER BY session_id, created_at ASC`, [email]);
@@ -226,7 +223,6 @@ app.post('/api/submit-payment', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Failed" }); }
 });
 
-// --- Admin Control Panel ---
 app.post('/api/admin/login', (req, res) => {
     if (req.body.password === ADMIN_PASSWORD) res.json({ success: true }); 
     else res.status(401).json({ error: "Unauthorized" });
