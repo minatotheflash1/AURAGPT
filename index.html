@@ -6,71 +6,141 @@
     <title>AURAGPT</title>
     
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
-    <script>
-        MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']]
-            },
-            svg: { fontCache: 'global' }
-        };
+    <script> 
+        MathJax = { 
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } 
+        }; 
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
+    
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; color: #0d0d0d; margin: 0; padding: 0; }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: #ffffff; 
+            color: #0d0d0d; 
+            margin: 0; 
+            padding: 0; 
+        }
+
+        /* Animations */
+        @keyframes fadeUp { 
+            from { opacity: 0; transform: translateY(15px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
         .animate-fade-up { animation: fadeUp 0.4s ease-out forwards; }
         
-        #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-        .toast { background: #333; color: #fff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); display: flex; align-items: center; gap: 8px; }
+        /* Toast Notifications */
+        #toast-container { 
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
+            z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; 
+        }
+        .toast { 
+            background: #333; color: #fff; padding: 12px 24px; border-radius: 30px; 
+            font-size: 14px; font-weight: 500; opacity: 0; transform: translateY(-20px); 
+            transition: 0.3s; display: flex; align-items: center; gap: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
         .toast.show { opacity: 1; transform: translateY(0); }
         .toast.success { background: #10a37f; }
         .toast.error { background: #ef4444; }
 
-        /* Sidebar & Utilities */
-        .sidebar { background-color: #f9f9f9; width: 280px; height: 100vh; flex-shrink: 0; display: flex; flex-direction: column; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-right: 1px solid #e5e5e5; z-index: 50;}
-        @media (max-width: 768px) { .sidebar { position: fixed; transform: translateX(-100%); } .sidebar.active { transform: translateX(0); box-shadow: 4px 0 25px rgba(0,0,0,0.1); } }
-        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(2px); z-index: 40; transition: 0.3s; }
+        /* Sidebar Styles */
+        .sidebar { 
+            background-color: #f9f9f9; width: 280px; height: 100vh; flex-shrink: 0; 
+            display: flex; flex-direction: column; transition: 0.3s; border-right: 1px solid #e5e5e5; z-index: 50;
+        }
+        @media (max-width: 768px) { 
+            .sidebar { position: fixed; transform: translateX(-100%); } 
+            .sidebar.active { transform: translateX(0); } 
+        }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 40; }
         .sidebar-overlay.active { display: block; }
-        .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 8px; cursor: pointer; color: #0d0d0d; font-size: 14px; transition: background-color 0.2s; margin-bottom: 2px; }
+        
+        .sidebar-item { 
+            display: flex; align-items: center; gap: 12px; padding: 12px 14px; 
+            border-radius: 8px; cursor: pointer; font-size: 14px; transition: 0.2s; margin-bottom: 2px; 
+        }
         .sidebar-item:hover { background-color: #ececec; }
-        .history-item { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: #4b5563; padding: 10px 14px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        
+        .history-item { 
+            font-size: 13px; color: #4b5563; padding: 10px 14px; border-radius: 8px; 
+            cursor: pointer; transition: 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
         .history-item:hover { background-color: #e5e7eb; }
         .history-item.active-session { background-color: #e5e5e5; font-weight: 600; color: #000; }
-        .header-icon { color: #4d4d4d; cursor: pointer; font-size: 20px; padding: 8px; border-radius: 6px; transition: 0.2s; }
-        
-        .get-plus-btn { background-color: #f4f0ff; color: #8e59ff; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; border: none; transition: 0.2s;}
-        .get-plus-btn:hover { background-color: #ebe4ff; transform: scale(1.02); }
 
-        /* Gemini Style Input Box */
-        .gemini-input-container { max-width: 820px; width: 100%; margin: 0 auto; position: relative; }
-        .attachment-preview { display: none; padding: 8px 14px; background: #eef2f6; border-radius: 12px 12px 0 0; margin-bottom: -15px; border: 1px solid #e1e5ea; border-bottom: none; align-items: center; gap: 8px; max-width: max-content; }
-        .attachment-preview.active { display: flex; }
-        .gemini-input-wrapper { background-color: #f0f4f9; border-radius: 30px; display: flex; align-items: center; padding: 10px 14px; transition: 0.3s; z-index: 2; position: relative;}
-        .gemini-input-wrapper:focus-within { background-color: #fff; border: 1px solid #e5e5e5; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .gemini-input-wrapper input[type="text"] { background: transparent; border: none; outline: none; flex-grow: 1; font-size: 16px; padding: 12px 14px; color: #1f1f1f; width: 100%; }
-        .gemini-icon-btn { color: #444746; font-size: 20px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        /* Badges */
+        .badge { 
+            padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; 
+            margin-left: 5px; display: inline-block; vertical-align: middle;
+        }
+        .badge-FREE { background: #e5e7eb; color: #374151; }
+        .badge-GO { background: #dbeafe; color: #1e40af; }
+        .badge-PLUS { background: #f3e8ff; color: #6b21a8; }
+        .badge-PRO { background: #fef3c7; color: #92400e; }
+        .badge-Admin { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+        
+        /* Glowing Owner Badge */
+        .badge-Owner { 
+            background: linear-gradient(90deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff); 
+            background-size: 400%; color: white; 
+            animation: glowingOwner 4s linear infinite; 
+            box-shadow: 0 0 10px rgba(255,115,0,0.8); 
+        }
+        @keyframes glowingOwner { 
+            0% { background-position: 0% 0%; } 
+            100% { background-position: 100% 0%; } 
+        }
+
+        /* Gemini Input Styles */
+        .gemini-input-wrapper { 
+            background-color: #f0f4f9; border-radius: 30px; display: flex; align-items: center; 
+            padding: 10px 14px; transition: 0.3s; width: 100%; max-width: 820px; margin: 0 auto;
+        }
+        .gemini-input-wrapper:focus-within { background-color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .gemini-input-wrapper input { 
+            background: transparent; border: none; outline: none; flex-grow: 1; 
+            font-size: 16px; padding: 12px 14px; width: 100%; 
+        }
+        
+        .gemini-icon-btn, .gemini-send-btn { 
+            font-size: 20px; width: 42px; height: 42px; display: flex; align-items: center; 
+            justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; 
+        }
+        .gemini-icon-btn { color: #444746; }
         .gemini-icon-btn:hover { background-color: #e1e5ea; }
-        .gemini-send-btn { color: #b3b3b3; font-size: 20px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        .gemini-send-btn { color: #b3b3b3; }
         .gemini-send-btn.active { color: #0b57d0; background-color: #d3e3fd; }
-        .mode-btn { color: #666; font-size: 16px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        
+        .mode-btn { 
+            color: #666; font-size: 16px; width: 36px; height: 36px; display: flex; 
+            align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; 
+        }
         .mode-btn.active { color: #8e59ff; background-color: #f4f0ff; }
-        .mode-btn:hover { background-color: #e5e5e5; }
-
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.3s; }
+        
+        /* Modal Styles */
+        .modal { 
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); 
+            z-index: 100; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; backdrop-filter: blur(2px);
+        }
         .modal.active { display: flex; opacity: 1; }
-        .modal-content { transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .modal.active .modal-content { transform: scale(1); }
         
-        #fileUploadInput { display: none; }
-        
-        /* User bubble specific styling */
-        .user-bubble { background-color: #f4f4f4; color: #0d0d0d; padding: 12px 20px; border-radius: 24px; max-width: 70%; font-size: 16px; white-space: pre-wrap; }
+        /* Code Block Copy UI */
+        .code-container { 
+            background: #1e1e1e; border-radius: 12px; overflow: hidden; margin: 15px 0; font-family: monospace; 
+        }
+        .code-header { 
+            background: #2d2d2d; padding: 8px 16px; display: flex; justify-content: space-between; 
+            align-items: center; color: #a3a3a3; font-size: 12px; 
+        }
+        .code-copy-btn { cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .code-copy-btn:hover { color: #fff; }
+        .code-content { padding: 16px; overflow-x: auto; color: #d4d4d4; font-size: 14px; margin: 0;}
     </style>
 </head>
 <body class="flex h-screen overflow-hidden">
@@ -80,77 +150,95 @@
 
     <div class="sidebar md:flex p-3" id="sidebar">
         <div class="flex justify-between items-center mb-6 px-2 pt-2">
-            <img src="/logo.png" alt="AuraGPT Logo" class="w-8 h-8 object-contain mix-blend-darken">
-            <i class="fa-solid fa-xmark header-icon text-gray-500 md:hidden" onclick="toggleSidebar()"></i>
-        </div>
-        <div class="sidebar-item font-medium border border-gray-200 shadow-sm" onclick="startNewChat()">
-            <i class="fa-regular fa-pen-to-square" style="color:#000;"></i> New chat
+            <img src="/logo.png" class="w-8 h-8 mix-blend-darken">
+            <i class="fa-solid fa-xmark text-xl text-gray-500 md:hidden cursor-pointer" onclick="toggleSidebar()"></i>
         </div>
         
-        <div class="flex-grow overflow-y-auto mt-4 px-1 space-y-1" id="chatHistoryList">
-            <p class="text-xs text-gray-400 font-bold px-2 mb-2 uppercase tracking-wider">Recent</p>
+        <div class="sidebar-item border shadow-sm font-bold" onclick="startNewChat()">
+            <i class="fa-regular fa-pen-to-square"></i> New chat
         </div>
         
-        <div class="mt-auto pt-4 border-t border-gray-200">
-            <div class="px-3 mb-3 flex items-center justify-between">
+        <div class="sidebar-item mt-4 text-purple-600 bg-purple-50 font-bold" onclick="openLeaderboard()">
+            <i class="fa-solid fa-trophy"></i> Leaderboard
+        </div>
+        
+        <div class="flex-grow overflow-y-auto mt-4 space-y-1" id="chatHistoryList">
+            <p class="text-xs text-gray-400 font-bold px-2 mb-2">RECENT</p>
+        </div>
+        
+        <div class="mt-auto border-t pt-4">
+            <div class="px-2 mb-3 flex items-center justify-between">
                 <div>
-                    <div class="text-sm font-bold text-gray-800 truncate w-28" id="sidebarUserName">Loading...</div>
-                    <div class="text-[11px] text-gray-500" id="planText">Plan: <span id="sidebarUserPlan" class="font-bold text-[#10a37f]">FREE</span></div>
+                    <div class="text-sm font-bold text-gray-800 truncate w-32" id="sidebarUserName">User</div>
+                    <div><span id="sidebarUserBadge" class="badge badge-FREE">FREE</span></div>
                 </div>
-                <button id="sidebarUpgradeBtn" class="text-[10px] font-bold bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded-lg transition" onclick="openPaymentModal()">UPGRADE</button>
             </div>
-            <div class="sidebar-item text-red-500 hover:bg-red-50" onclick="logout()"><i class="fa-solid fa-power-off"></i> Logout</div>
+            <div class="sidebar-item text-red-500 hover:bg-red-50" onclick="logout()">
+                <i class="fa-solid fa-power-off"></i> Logout
+            </div>
         </div>
     </div>
 
-    <div class="flex-1 flex flex-col relative h-full bg-white w-full">
-        <header class="flex justify-between items-center px-4 py-3 border-b border-gray-50 h-[60px]">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-bars-staggered header-icon text-gray-500 md:hidden" onclick="toggleSidebar()"></i>
-                <i class="fa-solid fa-sidebar header-icon text-gray-500 hidden md:block" onclick="toggleSidebarPC()"></i>
-                <div class="cursor-pointer text-lg font-semibold text-gray-800 hidden sm:block">AURAGPT</div>
+    <div class="flex-1 flex flex-col relative h-full bg-white">
+        <header class="flex justify-between items-center px-4 py-3 border-b border-gray-50">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-bars text-xl text-gray-500 md:hidden cursor-pointer" onclick="toggleSidebar()"></i>
+                <i class="fa-solid fa-sidebar text-xl text-gray-500 hidden md:block cursor-pointer" onclick="toggleSidebarPC()"></i>
+                <div class="font-bold text-gray-800 hidden sm:block">AURAGPT</div>
             </div>
             
-            <div class="flex bg-gray-100 p-1 rounded-xl mx-auto shadow-inner">
-                <button id="mod-fast" onclick="selectAIModel('fast')" class="px-3 md:px-4 py-1.5 rounded-lg text-sm font-bold bg-white shadow-sm text-gray-800 transition">⚡ Fast</button>
-                <button id="mod-pro" onclick="selectAIModel('pro')" class="px-3 md:px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500 hover:text-gray-800 transition">✨ Pro</button>
-                <button id="mod-think" onclick="selectAIModel('think')" class="px-3 md:px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500 hover:text-gray-800 transition">🧠 Think</button>
+            <div class="flex bg-gray-100 p-1 rounded-xl">
+                <button id="mod-fast" onclick="selectAIModel('fast')" class="px-4 py-1.5 rounded-lg text-sm font-bold bg-white shadow-sm">⚡ Fast</button>
+                <button id="mod-pro" onclick="selectAIModel('pro')" class="px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500">✨ Pro</button>
+                <button id="mod-think" onclick="selectAIModel('think')" class="px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500">🧠 Think</button>
             </div>
 
-            <button id="headerUpgradeBtn" class="get-plus-btn hidden sm:flex" onclick="openPaymentModal()"><i class="fa-solid fa-sparkles"></i> Get Plus</button>
+            <div class="flex items-center gap-4">
+                <button id="headerUpgradeBtn" class="bg-purple-100 text-purple-600 px-4 py-1.5 rounded-full text-sm font-bold hidden sm:block" onclick="openPaymentModal()">Upgrade</button>
+                <div class="relative cursor-pointer" onclick="document.getElementById('profilePicInput').click()" title="Change Profile Picture">
+                    <input type="file" id="profilePicInput" accept="image/*" style="display:none;" onchange="uploadProfilePic(event)">
+                    <img id="topAvatar" src="https://ui-avatars.com/api/?name=U&background=random" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200 hover:border-[#10a37f] transition">
+                </div>
+            </div>
         </header>
 
-        <div id="chatWindow" class="flex-1 flex flex-col items-center justify-start overflow-y-auto px-4 pt-6 pb-40 w-full scroll-smooth">
-            <h1 id="welcomeText" class="text-3xl md:text-4xl font-normal text-center text-[#0d0d0d] mb-12 animate-fade-up mt-10">
-                Hello, USER<br>
-                <span class="text-xl text-gray-500 mt-2 block">Ready when you are.</span>
+        <div id="chatWindow" class="flex-1 overflow-y-auto px-4 pt-6 pb-40 scroll-smooth">
+            <h1 id="welcomeText" class="text-3xl md:text-4xl font-normal text-center text-[#0d0d0d] mb-12 mt-10 animate-fade-up">
+                Hello, <span id="welcomeName">User</span>
             </h1>
-            <div id="messages" class="w-full max-w-3xl flex flex-col gap-6"></div>
+            <div id="messages" class="max-w-3xl mx-auto flex flex-col gap-6"></div>
         </div>
 
-        <div class="absolute bottom-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 px-4">
-            <div class="gemini-input-container">
-                <div id="attachmentPreview" class="attachment-preview">
-                    <i class="fa-solid fa-file-lines text-[#0b57d0]"></i>
-                    <span id="attachedFileName" class="text-sm text-gray-700 truncate max-w-[150px]">document.pdf</span>
-                    <i class="fa-solid fa-xmark ml-2 text-gray-400 cursor-pointer hover:text-red-500" onclick="removeAttachment()"></i>
+        <div class="absolute bottom-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-6 pb-4 px-4">
+            <div class="max-w-[820px] mx-auto relative">
+                
+                <div id="attachmentPreview" class="hidden items-center gap-2 p-2 bg-blue-50 border border-blue-100 rounded-t-xl mb-[-15px] w-max z-0 relative">
+                    <i class="fa-solid fa-file text-[#0b57d0]"></i> 
+                    <span id="attachedFileName" class="text-xs font-bold text-gray-700 truncate max-w-[150px]"></span>
+                    <i class="fa-solid fa-xmark text-gray-400 cursor-pointer hover:text-red-500 ml-2" onclick="removeAttachment()"></i>
                 </div>
+                
+                <div class="gemini-input-wrapper shadow-lg relative z-10">
+                    <input type="file" id="fileUploadInput" onchange="handleFileSelect(event)" style="display:none;">
+                    <div class="gemini-icon-btn" onclick="document.getElementById('fileUploadInput').click()">
+                        <i class="fa-solid fa-plus"></i>
+                    </div>
 
-                <div class="gemini-input-wrapper">
-                    <input type="file" id="fileUploadInput" onchange="handleFileSelect(event)" accept="image/*,.pdf,.doc,.docx,.txt">
-                    <div class="gemini-icon-btn" title="Add attachment" onclick="document.getElementById('fileUploadInput').click()"><i class="fa-solid fa-plus"></i></div>
-
-                    <div class="flex gap-1 pl-2 border-l border-gray-300 ml-1">
-                        <div class="mode-btn active" id="modeChat" onclick="setMode('chat')" title="Chat"><i class="fa-solid fa-message"></i></div>
-                        <div class="mode-btn" id="modePhoto" onclick="setMode('photo')" title="Photo AI"><i class="fa-solid fa-image"></i></div>
-                        <div class="mode-btn" id="modeVideo" onclick="setMode('video')" title="Video AI"><i class="fa-solid fa-film"></i></div>
+                    <div class="flex gap-1 pl-1 border-l border-gray-300 ml-1">
+                        <div class="mode-btn active" id="modeChat" onclick="setMode('chat')"><i class="fa-solid fa-message"></i></div>
+                        <div class="mode-btn" id="modePhoto" onclick="setMode('photo')"><i class="fa-solid fa-image"></i></div>
+                        <div class="mode-btn" id="modeVideo" onclick="setMode('video')"><i class="fa-solid fa-film"></i></div>
                     </div>
 
                     <input type="text" id="userInput" placeholder="Ask AuraGPT..." autocomplete="off" oninput="toggleSendIcon()">
                     
-                    <div class="flex items-center gap-1 pr-1">
-                        <div id="micBtn" onclick="startVoiceRecognition()" class="gemini-icon-btn"><i class="fa-solid fa-microphone"></i></div>
-                        <div id="sendBtn" onclick="processRequest()" class="gemini-send-btn hidden"><i class="fa-solid fa-paper-plane"></i></div>
+                    <div class="flex items-center gap-1">
+                        <div id="micBtn" onclick="startVoiceRecognition()" class="gemini-icon-btn">
+                            <i class="fa-solid fa-microphone"></i>
+                        </div>
+                        <div id="sendBtn" onclick="processRequest()" class="gemini-send-btn hidden">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -158,22 +246,41 @@
         </div>
     </div>
 
+    <div id="leaderboardModal" class="modal">
+        <div class="bg-white w-full max-w-md rounded-3xl p-6 relative shadow-2xl mx-4">
+            <i class="fa-solid fa-xmark absolute top-4 right-4 text-xl cursor-pointer text-gray-500 hover:text-red-500" onclick="closeLeaderboard()"></i>
+            <h2 class="text-2xl font-bold mb-4 text-center"><i class="fa-solid fa-trophy text-yellow-500"></i> Aura Leaderboard</h2>
+            <div id="leaderboardList" class="space-y-3 max-h-[300px] overflow-y-auto pr-2"></div>
+        </div>
+    </div>
+
     <div id="paymentModal" class="modal">
-        <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl relative modal-content mx-4">
+        <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl relative mx-4">
             <i class="fa-solid fa-xmark absolute top-4 right-4 text-xl cursor-pointer text-gray-500 hover:text-red-500 transition" onclick="closePaymentModal()"></i>
             <h2 class="text-2xl font-bold mb-4 text-center text-gray-800">Upgrade to AuraGPT</h2>
+            
             <div class="grid grid-cols-3 gap-2 mb-6 text-center">
-                <div id="plan-GO" onclick="selectPlan('GO')" class="plan-card border rounded-lg p-2 cursor-pointer hover:border-purple-500"><div class="font-bold">GO</div><div class="text-sm">50৳</div><div class="text-[10px] text-gray-500">5 Videos / 30 Days</div></div>
-                <div id="plan-PLUS" onclick="selectPlan('PLUS')" class="plan-card border rounded-lg p-2 cursor-pointer border-purple-500 bg-purple-50"><div class="font-bold text-purple-700">PLUS</div><div class="text-sm">200৳</div><div class="text-[10px] text-gray-500">20 Videos / 30 Days</div></div>
-                <div id="plan-PRO" onclick="selectPlan('PRO')" class="plan-card border rounded-lg p-2 cursor-pointer hover:border-purple-500"><div class="font-bold">PRO</div><div class="text-sm">500৳</div><div class="text-[10px] text-gray-500">Unlimited / 30 Days</div></div>
+                <div id="plan-GO" onclick="selectPlan('GO')" class="border rounded-lg p-2 cursor-pointer hover:border-purple-500">
+                    <div class="font-bold">GO</div><div class="text-sm">50৳</div><div class="text-[10px] text-gray-500">5 Videos / 30 Days</div>
+                </div>
+                <div id="plan-PLUS" onclick="selectPlan('PLUS')" class="border rounded-lg p-2 cursor-pointer border-purple-500 bg-purple-50">
+                    <div class="font-bold text-purple-700">PLUS</div><div class="text-sm">200৳</div><div class="text-[10px] text-gray-500">20 Videos / 30 Days</div>
+                </div>
+                <div id="plan-PRO" onclick="selectPlan('PRO')" class="border rounded-lg p-2 cursor-pointer hover:border-purple-500">
+                    <div class="font-bold">PRO</div><div class="text-sm">500৳</div><div class="text-[10px] text-gray-500">Unlimited / 30 Days</div>
+                </div>
             </div>
+            
             <div class="bg-gray-50 p-4 rounded-xl mb-4 text-center border border-gray-100">
                 <p class="text-sm text-gray-500 mb-2">Send money via bKash / Nagad to:</p>
                 <div class="flex items-center justify-center gap-2">
                     <span class="text-xl font-bold tracking-wider text-gray-800">+8801846849460</span>
-                    <button onclick="copyNumber()" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-md text-sm transition"><i class="fa-regular fa-copy"></i></button>
+                    <button onclick="navigator.clipboard.writeText('+8801846849460'); showToast('Copied!', 'success');" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-md text-sm">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
                 </div>
             </div>
+            
             <div class="space-y-3">
                 <input type="text" id="userPhone" placeholder="Your bKash/Nagad Number" class="w-full p-3 border rounded-xl outline-none focus:border-purple-500 transition">
                 <input type="text" id="trxId" placeholder="Transaction ID (TrxID)" class="w-full p-3 border rounded-xl outline-none focus:border-purple-500 transition">
@@ -183,82 +290,151 @@
     </div>
 
     <script>
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerHTML = (type === 'success' ? '<i class="fa-solid fa-check-circle"></i> ' : '<i class="fa-solid fa-circle-exclamation"></i> ') + message;
-            container.appendChild(toast);
-            setTimeout(() => toast.classList.add('show'), 10);
-            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
-        }
-
-        function copyNumber() { navigator.clipboard.writeText('+8801846849460'); showToast('Number copied!', 'success'); }
-
+        // Check Authentication
         const userEmail = localStorage.getItem('auraUserEmail');
         if(!userEmail) window.location.href = '/';
 
-        let currentMode = 'chat', selectedPlan = 'PLUS', currentSessionId = null;
-        let currentAIModel = 'fast', currentUserPlan = 'FREE';
-        let attachedFileName = null;
+        // Global State Variables
+        let currentMode = 'chat';
+        let currentSessionId = null;
+        let currentAIModel = 'fast';
+        let currentUserBadge = 'FREE';
+        let attachedFile = null;
+        let selectedPlan = 'PLUS';
 
-        async function fetchUserStatus() {
+        // Show Toast Notifications
+        function showToast(msg, type='success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div'); 
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fa-solid ${type==='success'?'fa-check-circle':'fa-circle-exclamation'}"></i> ${msg}`;
+            container.appendChild(toast); 
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { 
+                toast.classList.remove('show'); 
+                setTimeout(() => toast.remove(), 300); 
+            }, 3000);
+        }
+
+        // Fetch User Info
+        async function fetchStatus() {
             try {
                 const res = await fetch(`/api/user/status?email=${userEmail}`);
                 const data = await res.json();
-                currentUserPlan = data.plan;
                 
-                // Set Custom Name in UI
+                currentUserBadge = data.badge || 'FREE';
+                
                 document.getElementById('sidebarUserName').innerText = data.name;
-                // Update Welcome Text Personalization
-                document.getElementById('welcomeText').innerHTML = `Hello, ${data.name}<br><span class="text-xl text-gray-500 mt-2 block">Ready when you are.</span>`;
+                document.getElementById('welcomeName').innerText = data.name;
+                
+                const badgeEl = document.getElementById('sidebarUserBadge');
+                badgeEl.className = `badge badge-${currentUserBadge}`;
+                badgeEl.innerText = currentUserBadge;
 
-                const sbPlan = document.getElementById('sidebarUserPlan');
-                sbPlan.innerText = data.plan;
-                if(data.plan === 'PRO') sbPlan.classList.replace('text-[#10a37f]', 'text-red-500');
-
-                if(data.plan !== 'FREE') {
-                    document.getElementById('headerUpgradeBtn').style.display = 'none';
-                    document.getElementById('sidebarUpgradeBtn').style.display = 'none';
-                    if(data.plan_expires_at) {
-                        const expireDate = new Date(data.plan_expires_at).toLocaleDateString();
-                        document.getElementById('planText').innerHTML = `Plan: <span class="font-bold text-[#10a37f]">${data.plan}</span><br><span class="text-[9px]">Valid till ${expireDate}</span>`;
-                    }
+                if(data.profile_pic) {
+                    document.getElementById('topAvatar').src = data.profile_pic;
+                } else {
+                    document.getElementById('topAvatar').src = `https://ui-avatars.com/api/?name=${data.name}&background=random`;
                 }
-            } catch (e) {}
+
+                if(currentUserBadge !== 'FREE') {
+                    document.getElementById('headerUpgradeBtn').style.display = 'none';
+                }
+            } catch (error) {
+                console.error("Error fetching user status");
+            }
         }
 
-        function handleFileSelect(event) {
+        // Upload Profile Picture
+        function uploadProfilePic(event) {
             const file = event.target.files[0];
             if(file) {
-                attachedFileName = file.name;
-                document.getElementById('attachedFileName').innerText = file.name;
-                document.getElementById('attachmentPreview').classList.add('active');
-                
-                const iconElement = document.querySelector('#attachmentPreview i:first-child');
-                if(file.type.includes('image')) iconElement.className = 'fa-solid fa-image text-purple-500';
-                else if(file.name.endsWith('.pdf')) iconElement.className = 'fa-solid fa-file-pdf text-red-500';
-                else iconElement.className = 'fa-solid fa-file-lines text-[#0b57d0]';
-
-                toggleSendIcon();
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const base64Image = e.target.result;
+                    document.getElementById('topAvatar').src = base64Image;
+                    
+                    await fetch('/api/user/update-pic', { 
+                        method: 'POST', 
+                        headers: {'Content-Type': 'application/json'}, 
+                        body: JSON.stringify({ email: userEmail, imageBase64: base64Image }) 
+                    });
+                    showToast('Profile picture updated!');
+                };
+                reader.readAsDataURL(file);
             }
         }
-        function removeAttachment() {
-            attachedFileName = null;
-            document.getElementById('fileUploadInput').value = '';
-            document.getElementById('attachmentPreview').classList.remove('active');
-            toggleSendIcon();
+
+        // Markdown Formatting & Code Blocks
+        function formatMarkdown(text) {
+            let html = marked.parse(text);
+            
+            // Format specific language code blocks
+            html = html.replace(/<pre><code class="language-(.*?)">([\s\S]*?)<\/code><\/pre>/g, function(match, lang, code) {
+                const rawCode = encodeURIComponent(code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
+                return `<div class="code-container">
+                            <div class="code-header">
+                                <span class="uppercase">${lang}</span>
+                                <div class="code-copy-btn" onclick="navigator.clipboard.writeText(decodeURIComponent('${rawCode}')); showToast('Copied to clipboard!')">
+                                    <i class="fa-regular fa-copy"></i> Copy code
+                                </div>
+                            </div>
+                            <pre class="code-content">${code}</pre>
+                        </div>`;
+            });
+            
+            // Format generic code blocks
+            html = html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, function(match, code) {
+                const rawCode = encodeURIComponent(code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
+                return `<div class="code-container">
+                            <div class="code-header">
+                                <span>Code</span>
+                                <div class="code-copy-btn" onclick="navigator.clipboard.writeText(decodeURIComponent('${rawCode}')); showToast('Copied to clipboard!')">
+                                    <i class="fa-regular fa-copy"></i> Copy code
+                                </div>
+                            </div>
+                            <pre class="code-content">${code}</pre>
+                        </div>`;
+            });
+            return html;
         }
 
+        // Leaderboard Functions
+        async function openLeaderboard() {
+            document.getElementById('leaderboardModal').classList.add('active');
+            
+            const res = await fetch('/api/leaderboard');
+            const data = await res.json();
+            const list = document.getElementById('leaderboardList');
+            list.innerHTML = '';
+            
+            data.forEach(u => {
+                list.innerHTML += `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100 shadow-sm">
+                    <div>
+                        <div class="font-bold text-sm text-gray-800">${u.name}</div>
+                        <div class="text-xs text-gray-500">${u.email}</div>
+                    </div>
+                    <span class="badge badge-${u.badge}">${u.badge}</span>
+                </div>`;
+            });
+            
+            if(window.innerWidth < 768) toggleSidebar();
+        }
+        function closeLeaderboard() { 
+            document.getElementById('leaderboardModal').classList.remove('active'); 
+        }
+
+        // AI Model Selection
         function selectAIModel(model) {
-            if (model === 'pro' && !['PLUS', 'PRO'].includes(currentUserPlan)) {
-                showToast('✨ Pro model requires PLUS or PRO plan!', 'error');
-                openPaymentModal();
-                return;
+            if (model === 'pro' && !['PLUS', 'PRO', 'Admin', 'Owner'].includes(currentUserBadge)) {
+                return showToast('✨ Requires PLUS/PRO Badge!', 'error');
             }
             currentAIModel = model;
+            
             ['fast', 'pro', 'think'].forEach(m => {
-                const btn = document.getElementById('mod-' + m);
+                const btn = document.getElementById('mod-'+m);
                 if(m === model) {
                     btn.classList.add('bg-white', 'shadow-sm', 'text-gray-800');
                     btn.classList.remove('text-gray-500');
@@ -269,192 +445,254 @@
             });
         }
 
+        // Load Sidebar History
         async function loadHistorySidebar() {
-            try {
-                const res = await fetch(`/api/history/sessions?email=${userEmail}`);
-                const sessions = await res.json();
-                const container = document.getElementById('chatHistoryList');
-                container.innerHTML = '<p class="text-xs text-gray-400 font-bold px-2 mb-2 uppercase tracking-wider">Recent</p>';
-                if(sessions.length > 0) {
-                    sessions.forEach(item => {
-                        const icon = item.type === 'video' ? 'fa-film' : (item.type === 'photo' ? 'fa-image' : 'fa-message');
-                        const activeClass = item.session_id === currentSessionId ? 'active-session' : '';
-                        container.innerHTML += `<div class="history-item ${activeClass}" onclick="loadChatSession('${item.session_id}')"><i class="fa-solid ${icon} mr-2 text-gray-400"></i>${item.title}</div>`;
-                    });
-                }
-            } catch (e) {}
-        }
-        
-        window.onload = () => { fetchUserStatus(); loadHistorySidebar(); };
-
-        function startNewChat() {
-            currentSessionId = null;
-            document.getElementById('messages').innerHTML = '';
-            document.getElementById('welcomeText').style.display = 'block';
-            loadHistorySidebar();
-            if(window.innerWidth < 768) toggleSidebar();
+            const res = await fetch(`/api/history/sessions?email=${userEmail}`);
+            const sessions = await res.json();
+            
+            const container = document.getElementById('chatHistoryList');
+            container.innerHTML = '<p class="text-xs text-gray-400 font-bold px-2 mb-2 uppercase">Recent</p>';
+            
+            sessions.forEach(item => {
+                const activeClass = item.session_id === currentSessionId ? 'active-session' : '';
+                container.innerHTML += `<div class="history-item ${activeClass}" onclick="loadChatSession('${item.session_id}')">${item.title}</div>`;
+            });
         }
 
-        async function loadChatSession(sessionId) {
-            currentSessionId = sessionId;
-            document.getElementById('welcomeText').style.display = 'none';
-            document.getElementById('messages').innerHTML = '<div class="text-center text-gray-400 mt-10"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading context...</div>';
-            try {
-                const res = await fetch(`/api/history/messages?session_id=${sessionId}`);
-                const messages = await res.json();
-                document.getElementById('messages').innerHTML = '';
-                messages.forEach(msg => {
-                    appendMessage('user', msg.prompt, null, false);
-                    appendMessage('ai', msg.reply, null, false);
-                });
-                loadHistorySidebar();
-                if(window.innerWidth < 768) toggleSidebar();
-            } catch (e) { document.getElementById('messages').innerHTML = '<div class="text-center text-red-500">Failed to load history.</div>'; }
-        }
-
+        // Sidebar Toggles
         function toggleSidebar() { 
-            const sb = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sb.classList.toggle('active'); overlay.classList.toggle('active');
+            document.getElementById('sidebar').classList.toggle('active'); 
+            document.getElementById('sidebarOverlay').classList.toggle('active'); 
         }
         function toggleSidebarPC() {
             const sb = document.getElementById('sidebar');
             sb.style.display = sb.style.display === 'none' ? 'flex' : 'none';
         }
+        
+        // Start New Chat
+        function startNewChat() { 
+            currentSessionId = null; 
+            document.getElementById('messages').innerHTML = ''; 
+            document.getElementById('welcomeText').style.display = 'block'; 
+            loadHistorySidebar(); 
+            if(window.innerWidth < 768) toggleSidebar();
+        }
+        
+        // Logout
+        function logout() { 
+            localStorage.clear(); 
+            window.location.href = '/'; 
+        }
 
-        function openPaymentModal() { document.getElementById('paymentModal').classList.add('active'); }
-        function closePaymentModal() { document.getElementById('paymentModal').classList.remove('active'); }
-        function logout() { localStorage.removeItem('auraUserEmail'); window.location.href = '/'; }
-
-        function selectPlan(plan) {
-            selectedPlan = plan;
-            document.querySelectorAll('.plan-card').forEach(el => {
-                el.classList.remove('border-purple-500', 'bg-purple-50');
-                el.querySelector('.font-bold').classList.remove('text-purple-700');
+        // Load Existing Chat Session
+        async function loadChatSession(sid) {
+            currentSessionId = sid; 
+            document.getElementById('welcomeText').style.display = 'none';
+            document.getElementById('messages').innerHTML = '<div class="text-center text-gray-400 mt-10"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading...</div>';
+            
+            const res = await fetch(`/api/history/messages?session_id=${sid}`);
+            const msgs = await res.json();
+            
+            document.getElementById('messages').innerHTML = '';
+            msgs.forEach(m => { 
+                appendMessage('user', m.prompt, null, false); 
+                appendMessage('ai', m.reply, null, false); 
             });
-            const activeCard = document.getElementById('plan-' + plan);
-            activeCard.classList.add('border-purple-500', 'bg-purple-50');
-            activeCard.querySelector('.font-bold').classList.add('text-purple-700');
+            
+            loadHistorySidebar(); 
+            if(window.innerWidth < 768) toggleSidebar();
         }
 
+        // File Attachment Logic
+        function handleFileSelect(e) { 
+            if(e.target.files[0]) { 
+                attachedFile = e.target.files[0].name; 
+                document.getElementById('attachedFileName').innerText = attachedFile; 
+                document.getElementById('attachmentPreview').style.display = 'flex'; 
+                toggleSendIcon(); 
+            } 
+        }
+        function removeAttachment() { 
+            attachedFile = null; 
+            document.getElementById('fileUploadInput').value = ''; 
+            document.getElementById('attachmentPreview').style.display = 'none'; 
+            toggleSendIcon(); 
+        }
+
+        // Set Input Mode
         function setMode(mode) {
-            currentMode = mode;
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            currentMode = mode; 
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
-            document.getElementById('userInput').placeholder = mode === 'chat' ? "Ask AuraGPT..." : (mode === 'photo' ? "Describe photo..." : "Describe video...");
-        }
-
-        function toggleSendIcon() {
-            const inputVal = document.getElementById('userInput').value.trim();
-            const micBtn = document.getElementById('micBtn'), sendBtn = document.getElementById('sendBtn');
-            if(inputVal.length > 0 || attachedFileName) { 
-                micBtn.style.display = 'none'; sendBtn.style.display = 'flex'; sendBtn.classList.add('active');
-            } else { 
-                micBtn.style.display = 'flex'; sendBtn.style.display = 'none'; sendBtn.classList.remove('active');
+            
+            if(mode === 'chat') {
+                document.getElementById('userInput').placeholder = "Ask AuraGPT...";
+            } else {
+                document.getElementById('userInput').placeholder = "Describe media...";
             }
         }
 
+        // Toggle Send/Mic Icon based on input
+        function toggleSendIcon() {
+            const val = document.getElementById('userInput').value.trim();
+            const micBtn = document.getElementById('micBtn');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            if(val || attachedFile) { 
+                micBtn.style.display = 'none'; 
+                sendBtn.style.display = 'flex'; 
+                sendBtn.classList.add('active'); 
+            } else { 
+                micBtn.style.display = 'flex'; 
+                sendBtn.style.display = 'none'; 
+                sendBtn.classList.remove('active'); 
+            }
+        }
+
+        // Voice Recognition
         function startVoiceRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) return showToast("Voice input not supported in this browser.", 'error');
-            const recognition = new SpeechRecognition();
+            if (!SpeechRecognition) return showToast("Voice input not supported", 'error');
+            
+            const recognition = new SpeechRecognition(); 
             recognition.lang = 'en-US'; 
+            
             const micIcon = document.querySelector('#micBtn i');
-            micIcon.classList.remove('fa-microphone'); micIcon.classList.add('fa-microphone-lines', 'text-red-500', 'fa-fade');
-            recognition.onresult = (e) => { document.getElementById('userInput').value += e.results[0][0].transcript + " "; toggleSendIcon(); };
-            recognition.onend = () => { micIcon.classList.add('fa-microphone'); micIcon.classList.remove('fa-microphone-lines', 'text-red-500', 'fa-fade'); };
+            micIcon.className = 'fa-solid fa-microphone-lines text-red-500 fa-fade';
+            
+            recognition.onresult = (e) => { 
+                document.getElementById('userInput').value += e.results[0][0].transcript + " "; 
+                toggleSendIcon(); 
+            };
+            
+            recognition.onend = () => { 
+                micIcon.className = 'fa-solid fa-microphone'; 
+            };
+            
             recognition.start();
         }
 
+        // Process Request (AI Call)
         async function processRequest() {
             let prompt = document.getElementById('userInput').value;
-            if(!prompt && !attachedFileName) return;
-
-            let displayPrompt = prompt;
-            if(attachedFileName) {
-                displayPrompt = `[Attached: ${attachedFileName}]\n${prompt}`;
-                prompt = `(User attached file: ${attachedFileName})\n${prompt}`;
-            }
+            if(!prompt && !attachedFile) return;
+            
+            let displayPrompt = attachedFile ? `[Attached: ${attachedFile}]\n${prompt}` : prompt;
+            prompt = attachedFile ? `(File: ${attachedFile})\n${prompt}` : prompt;
 
             document.getElementById('welcomeText').style.display = 'none';
             appendMessage('user', displayPrompt);
             
-            document.getElementById('userInput').value = '';
-            removeAttachment();
+            document.getElementById('userInput').value = ''; 
+            removeAttachment(); 
             toggleSendIcon();
 
-            const loadingId = "loader-" + Date.now();
-            appendMessage('ai', "Thinking...", loadingId);
+            const loadId = "l-" + Date.now();
+            appendMessage('ai', "Thinking...", loadId);
 
             try {
-                const res = await fetch('/api/request', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ prompt, type: currentMode, userEmail, sessionId: currentSessionId, modelChoice: currentAIModel })
+                const res = await fetch('/api/request', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ prompt, type: currentMode, userEmail, sessionId: currentSessionId, modelChoice: currentAIModel }) 
                 });
+                
                 const data = await res.json();
                 if(data.sessionId) currentSessionId = data.sessionId; 
                 
+                const el = document.getElementById(loadId);
+                
                 if(res.status !== 200) {
-                    document.getElementById(loadingId).innerHTML = `<span class="text-red-500"><i class="fa-solid fa-triangle-exclamation"></i> ${data.reply || data.error}</span>`;
+                    el.innerHTML = `<span class="text-red-500"><i class="fa-solid fa-triangle-exclamation"></i> ${data.reply || data.error}</span>`;
                 } else if(data.reply) { 
-                    // Update content with markdown parsing
-                    const bubble = document.getElementById(loadingId);
-                    bubble.innerHTML = marked.parse(data.reply);
-                    // Tell MathJax to render the new math formulas
-                    if(window.MathJax) { MathJax.typesetPromise([bubble]).catch((err) => console.log(err)); }
-                } else if(data.id) { 
-                    document.getElementById(loadingId).innerHTML = `Generating video... (Task ID: ${data.id})`; 
+                    el.innerHTML = formatMarkdown(data.reply); 
+                    if(window.MathJax) MathJax.typesetPromise([el]); 
+                } else if(data.id) {
+                    el.innerHTML = `Generating video... (Task ID: ${data.id})`;
                 }
+                
                 loadHistorySidebar();
-            } catch (e) { document.getElementById(loadingId).innerText = "Error: Connection failed."; }
+            } catch (e) { 
+                document.getElementById(loadId).innerText = "Error Processing Request."; 
+            }
         }
 
+        // Append Message UI
         function appendMessage(role, content, id = null, animate = true) {
-            const div = document.createElement('div');
-            div.className = `w-full flex ${role === 'user' ? 'justify-end' : 'justify-start'} ${animate ? 'animate-fade-up' : ''}`;
+            const div = document.createElement('div'); 
+            div.className = `w-full flex ${role==='user'?'justify-end':'justify-start'} ${animate?'animate-fade-up':''}`;
             
-            const bubble = document.createElement('div');
-            if(id) bubble.id = id;
+            const b = document.createElement('div'); 
+            if(id) b.id = id;
             
-            if (role === 'user') {
-                bubble.className = 'user-bubble';
-                bubble.innerText = content; // User text remains plain text
-            } else {
-                // Tailwind Prose used for Markdown beautiful formatting
-                bubble.className = 'prose prose-slate max-w-[100%] leading-relaxed text-[#0d0d0d] py-3';
-                
-                // Parse markdown before injecting
-                bubble.innerHTML = content === "Thinking..." ? content : marked.parse(content);
-                
-                // Render MathJax if it's already an existing old message
-                if(content !== "Thinking..." && window.MathJax) {
-                    MathJax.typesetPromise([bubble]).catch((err) => console.log(err));
+            if (role === 'user') { 
+                b.className = 'bg-[#f4f4f4] text-[#0d0d0d] px-5 py-3 rounded-3xl max-w-[75%] whitespace-pre-wrap'; 
+                b.innerText = content; 
+            } else { 
+                b.className = 'prose prose-slate max-w-[100%] leading-relaxed py-3'; 
+                b.innerHTML = content === "Thinking..." ? content : formatMarkdown(content); 
+                if(content!=="Thinking..." && window.MathJax) {
+                    MathJax.typesetPromise([b]); 
                 }
             }
             
-            div.appendChild(bubble);
+            div.appendChild(b); 
             document.getElementById('messages').appendChild(div);
             document.getElementById('chatWindow').scrollTop = document.getElementById('chatWindow').scrollHeight;
         }
 
-        document.getElementById("userInput").addEventListener("keypress", (e) => { if (e.key === "Enter") { e.preventDefault(); processRequest(); } });
+        // Enter key to send
+        document.getElementById("userInput").addEventListener("keypress", (e) => { 
+            if (e.key === "Enter") { e.preventDefault(); processRequest(); } 
+        });
 
+        // Modal & Payment Logic
+        function openPaymentModal() { document.getElementById('paymentModal').classList.add('active'); }
+        function closePaymentModal() { document.getElementById('paymentModal').classList.remove('active'); }
+        
+        function selectPlan(plan) {
+            selectedPlan = plan;
+            ['GO','PLUS','PRO'].forEach(p => {
+                const el = document.getElementById('plan-'+p);
+                if(p===plan) { 
+                    el.classList.add('border-purple-500', 'bg-purple-50'); 
+                    el.querySelector('.font-bold').classList.add('text-purple-700'); 
+                } else { 
+                    el.classList.remove('border-purple-500', 'bg-purple-50'); 
+                    el.querySelector('.font-bold').classList.remove('text-purple-700'); 
+                }
+            });
+        }
+        
         async function submitPayment() {
-            const phone = document.getElementById('userPhone').value;
+            const phone = document.getElementById('userPhone').value; 
             const trxId = document.getElementById('trxId').value;
+            
             if(!phone || !trxId) return showToast("Fill all details", 'error');
             
             document.getElementById('submitPayBtn').innerText = "Submitting...";
-            const res = await fetch('/api/submit-payment', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
+            
+            const res = await fetch('/api/submit-payment', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify({ userEmail, phone, trxId, plan: selectedPlan }) 
             });
-            if(res.ok) {
-                showToast(`Request for ${selectedPlan} sent!`, 'success'); 
-                closePaymentModal();
-            } else { showToast("Failed. TrxID might exist.", 'error'); }
+            
+            if(res.ok) { 
+                showToast("Payment submitted!", 'success'); 
+                closePaymentModal(); 
+            } else { 
+                showToast("Submission failed.", 'error'); 
+            }
+            
             document.getElementById('submitPayBtn').innerText = "Submit for Review";
         }
+
+        // Initialize App
+        window.onload = () => { 
+            fetchStatus(); 
+            loadHistorySidebar(); 
+        };
     </script>
 </body>
 </html>
