@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuraGPT Admin Control</title>
+    <title>Aura Admin Control</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -15,38 +14,57 @@
             background-color: #f3f4f6; 
         }
 
-        /* Sidebar Styles */
         .sidebar { 
-            background-color: #111827; color: white; width: 250px; height: 100vh; position: fixed; 
+            background-color: #111827; 
+            color: white; 
+            width: 250px; 
+            height: 100vh; 
+            position: fixed; 
         }
-        
-        /* Main Content Area */
+
         .main-content { 
-            margin-left: 250px; padding: 24px; width: calc(100% - 250px); 
+            margin-left: 250px; 
+            padding: 24px; 
+            width: calc(100% - 250px); 
         }
-        
-        /* Card & Table Styles */
+
         .card { 
-            background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 24px; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            margin-bottom: 24px; 
         }
+
         .table-th { 
-            background-color: #f9fafb; text-align: left; padding: 12px; font-weight: 600; color: #4b5563; border-bottom: 2px solid #e5e7eb; 
+            background-color: #f9fafb; 
+            text-align: left; 
+            padding: 12px; 
+            font-weight: 600; 
+            color: #4b5563; 
+            border-bottom: 2px solid #e5e7eb; 
         }
+
         .table-td { 
-            padding: 12px; border-bottom: 1px solid #e5e7eb; color: #1f2937; 
+            padding: 12px; 
+            border-bottom: 1px solid #e5e7eb; 
+            color: #1f2937; 
         }
-        
-        /* Badges */
+
         .badge { 
-            padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; display: inline-block;
+            padding: 4px 10px; 
+            border-radius: 12px; 
+            font-size: 11px; 
+            font-weight: bold; 
+            display: inline-block; 
         }
+
         .badge-FREE { background: #e5e7eb; color: #374151; }
         .badge-GO { background: #dbeafe; color: #1e40af; }
         .badge-PLUS { background: #f3e8ff; color: #6b21a8; }
         .badge-PRO { background: #fef3c7; color: #92400e; }
         .badge-Admin { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
         
-        /* 🔥 Special Glowing Owner Badge 🔥 */
         .badge-Owner { 
             background: linear-gradient(90deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff); 
             background-size: 400%; 
@@ -54,28 +72,53 @@
             animation: glowingOwner 4s linear infinite; 
             box-shadow: 0 0 10px rgba(255,115,0,0.8); 
         }
+
         @keyframes glowingOwner { 
             0% { background-position: 0% 0%; } 
             100% { background-position: 100% 0%; } 
         }
-        
-        /* Buttons */
+
         .btn-approve { 
-            background: #10a37f; color: white; padding: 6px 12px; border-radius: 6px; 
-            font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; border: none;
+            background: #10a37f; 
+            color: white; 
+            padding: 6px 12px; 
+            border-radius: 6px; 
+            font-size: 13px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            border: none; 
         }
-        .btn-approve:hover { background: #0d8c6d; }
-        
+
+        .btn-approve:hover { 
+            background: #0d8c6d; 
+        }
+
         .btn-reject { 
-            background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; 
-            font-size: 13px; font-weight: bold; cursor: pointer; border: none; margin-left: 5px; transition: 0.2s;
+            background: #ef4444; 
+            color: white; 
+            padding: 6px 12px; 
+            border-radius: 6px; 
+            font-size: 13px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border: none; 
+            margin-left: 5px; 
+            transition: 0.2s; 
         }
-        .btn-reject:hover { background: #dc2626; }
-        
-        /* Login Screen Overlay */
+
+        .btn-reject:hover { 
+            background: #dc2626; 
+        }
+
         #adminLoginScreen { 
-            position: fixed; inset: 0; background-color: #111827; z-index: 9999; 
-            display: flex; align-items: center; justify-content: center; 
+            position: fixed; 
+            inset: 0; 
+            background-color: #111827; 
+            z-index: 9999; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
         }
     </style>
 </head>
@@ -84,9 +127,14 @@
     <div id="adminLoginScreen">
         <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center">
             <img src="/logo.png" alt="AuraGPT" class="w-16 h-16 mx-auto mb-4 mix-blend-darken">
+            
             <h2 class="text-2xl font-bold mb-6 text-gray-800">Admin Login</h2>
+            
             <input type="password" id="adminPassInput" placeholder="Enter Admin Password" class="w-full p-3 border rounded-lg mb-4 outline-none focus:border-[#10a37f] transition">
-            <button onclick="adminLogin()" id="loginBtn" class="w-full bg-[#10a37f] text-white font-bold p-3 rounded-lg hover:bg-[#0d8c6d] transition">Access Dashboard</button>
+            
+            <button onclick="adminLogin()" id="loginBtn" class="w-full bg-[#10a37f] text-white font-bold p-3 rounded-lg hover:bg-[#0d8c6d] transition">
+                Access Dashboard
+            </button>
         </div>
     </div>
 
@@ -95,8 +143,12 @@
             <img src="/logo.png" alt="Logo" class="w-10 h-10 bg-white rounded-full p-1">
             <h2 class="text-xl font-bold tracking-wider">Aura Admin</h2>
         </div>
+        
         <ul class="space-y-4">
-            <li class="p-3 bg-gray-800 rounded-lg cursor-pointer transition"><i class="fa-solid fa-chart-line mr-2"></i> Dashboard</li>
+            <li class="p-3 bg-gray-800 rounded-lg cursor-pointer transition">
+                <i class="fa-solid fa-chart-line mr-2"></i> Dashboard
+            </li>
+            
             <li class="p-3 hover:bg-gray-800 rounded-lg cursor-pointer text-gray-300 mt-10 text-red-400 transition" onclick="adminLogout()">
                 <i class="fa-solid fa-right-from-bracket mr-2"></i> Logout
             </li>
@@ -111,18 +163,30 @@
             </div>
         </header>
 
-        <div class="grid grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-4 gap-4 mb-8">
             <div class="card border-l-4 border-[#10a37f] mb-0">
                 <h3 class="text-gray-500 text-sm font-bold">TOTAL USERS</h3>
                 <p class="text-3xl font-bold mt-2" id="totalUsers">0</p>
             </div>
+            
             <div class="card border-l-4 border-purple-500 mb-0">
                 <h3 class="text-gray-500 text-sm font-bold">PENDING PAYMENTS</h3>
                 <p class="text-3xl font-bold mt-2" id="pendingPayments">0</p>
             </div>
+            
             <div class="card border-l-4 border-blue-500 mb-0">
-                <h3 class="text-gray-500 text-sm font-bold">VIDEOS GENERATED</h3>
+                <h3 class="text-gray-500 text-sm font-bold">VIDEOS</h3>
                 <p class="text-3xl font-bold mt-2" id="totalVideos">0</p>
+            </div>
+            
+            <div class="card border-l-4 border-red-500 mb-0">
+                <h3 class="text-gray-500 text-sm font-bold">MAINTENANCE</h3>
+                <div class="mt-2 flex items-center justify-between">
+                    <span id="maintenanceStatusTxt" class="font-bold text-xl text-green-500">OFF</span>
+                    <button onclick="toggleMaintenance()" class="bg-gray-800 text-white px-3 py-1 rounded hover:bg-gray-700 transition font-bold text-sm shadow">
+                        Toggle
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -141,8 +205,7 @@
                             <th class="table-th">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="paymentTableBody">
-                        </tbody>
+                    <tbody id="paymentTableBody"></tbody>
                 </table>
             </div>
         </div>
@@ -161,78 +224,120 @@
                             <th class="table-th">Assign New Badge</th>
                         </tr>
                     </thead>
-                    <tbody id="userTableBody">
-                        </tbody>
+                    <tbody id="userTableBody"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
     <script>
-        // Check if admin is already logged in
         const savedPass = localStorage.getItem('auraAdminPass');
-        if(savedPass) { 
-            loadAdminData(savedPass); 
+        
+        if (savedPass) {
+            loadAdminData(savedPass);
         }
 
-        // Login Function
         async function adminLogin() {
             const pass = document.getElementById('adminPassInput').value;
-            if(!pass) return alert("Please enter password!");
+            
+            if (!pass) {
+                return alert("Please enter password!");
+            }
             
             document.getElementById('loginBtn').innerText = "Checking...";
             
             try {
-                const res = await fetch('/api/admin/login', {
+                const res = await fetch('/api/admin/login', { 
                     method: 'POST', 
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ password: pass })
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ password: pass }) 
                 });
-
-                if(res.ok) {
-                    localStorage.setItem('auraAdminPass', pass);
-                    loadAdminData(pass);
-                } else {
-                    alert("Incorrect Password!");
-                    document.getElementById('loginBtn').innerText = "Access Dashboard";
+                
+                if (res.ok) { 
+                    localStorage.setItem('auraAdminPass', pass); 
+                    loadAdminData(pass); 
+                } else { 
+                    alert("Incorrect Password!"); 
+                    document.getElementById('loginBtn').innerText = "Access Dashboard"; 
                 }
-            } catch (e) {
-                alert("Connection error. Please try again.");
-                document.getElementById('loginBtn').innerText = "Access Dashboard";
+            } catch (e) { 
+                alert("Connection error."); 
+                document.getElementById('loginBtn').innerText = "Access Dashboard"; 
             }
         }
 
-        // Logout Function
-        function adminLogout() {
-            localStorage.removeItem('auraAdminPass');
-            location.reload();
+        function adminLogout() { 
+            localStorage.removeItem('auraAdminPass'); 
+            location.reload(); 
         }
 
-        // Fetch and Load Data
+        async function fetchMaintenanceStatus() {
+            const password = localStorage.getItem('auraAdminPass');
+            try {
+                const res = await fetch('/api/admin/maintenance-status', { 
+                    headers: { 'Authorization': password } 
+                });
+                
+                const data = await res.json();
+                const statusTxt = document.getElementById('maintenanceStatusTxt');
+                
+                if (data.maintenance) { 
+                    statusTxt.innerText = "ON"; 
+                    statusTxt.className = "font-bold text-xl text-red-600"; 
+                } else { 
+                    statusTxt.innerText = "OFF"; 
+                    statusTxt.className = "font-bold text-xl text-green-500"; 
+                }
+            } catch(e) { 
+                console.error("Failed to fetch maintenance status"); 
+            }
+        }
+
+        async function toggleMaintenance() {
+            const password = localStorage.getItem('auraAdminPass');
+            
+            if(!confirm("Are you sure you want to toggle Maintenance Mode?")) {
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/admin/toggle-maintenance', { 
+                    method: 'POST', 
+                    headers: { 'Authorization': password } 
+                });
+                
+                if(res.ok) { 
+                    alert("Maintenance Mode Toggled Successfully!"); 
+                    fetchMaintenanceStatus(); 
+                }
+            } catch(e) { 
+                alert("Failed to toggle maintenance mode."); 
+            }
+        }
+
         async function loadAdminData(password) {
             try {
                 const res = await fetch('/api/admin/dashboard-data', { 
                     headers: { 'Authorization': password } 
                 });
                 
-                if(res.status === 401) { 
+                if (res.status === 401) { 
                     adminLogout(); 
                     return; 
                 }
                 
                 const data = await res.json();
 
-                // Hide login screen, show dashboard
                 document.getElementById('adminLoginScreen').style.display = 'none';
                 document.getElementById('dashboardSidebar').classList.remove('hidden');
                 document.getElementById('dashboardContent').classList.remove('hidden');
 
-                // Update Stats Cards
                 document.getElementById('totalUsers').innerText = data.users.length;
                 document.getElementById('pendingPayments').innerText = data.payments.length;
                 document.getElementById('totalVideos').innerText = data.users.reduce((acc, user) => acc + (user.video_count || 0), 0);
 
-                // Populate Pending Payments Table
+                fetchMaintenanceStatus();
+
                 const pBody = document.getElementById('paymentTableBody');
                 pBody.innerHTML = data.payments.length === 0 ? '<tr><td colspan="5" class="table-td text-center text-gray-500 py-4">No pending requests.</td></tr>' : '';
                 
@@ -248,12 +353,10 @@
                                 <button onclick="processPayment(${p.id}, '${p.user_email}', '${p.plan_requested}', 'approve')" class="btn-approve">Approve</button>
                                 <button onclick="processPayment(${p.id}, '${p.user_email}', '${p.plan_requested}', 'reject')" class="btn-reject"><i class="fa-solid fa-xmark"></i></button>
                             </td>
-                        </tr>
-                    `;
+                        </tr>`;
                 });
 
-                // Populate Users & Badges Table
-                const uBody = document.getElementById('userTableBody');
+                const uBody = document.getElementById('userTableBody'); 
                 uBody.innerHTML = '';
                 
                 data.users.forEach(u => {
@@ -262,7 +365,9 @@
                         <tr class="hover:bg-gray-50 transition">
                             <td class="table-td font-medium">${u.name}</td>
                             <td class="table-td text-gray-600">${u.email}</td>
-                            <td class="table-td"><span class="badge badge-${currentBadge}">${currentBadge}</span></td>
+                            <td class="table-td">
+                                <span class="badge badge-${currentBadge}">${currentBadge}</span>
+                            </td>
                             <td class="table-td flex gap-2 items-center">
                                 <select id="badge-${u.email}" class="border border-gray-300 p-1.5 rounded outline-none text-sm bg-white focus:border-blue-500 transition">
                                     <option value="FREE" ${currentBadge==='FREE'?'selected':''}>FREE</option>
@@ -274,58 +379,57 @@
                                 </select>
                                 <button onclick="updateBadge('${u.email}')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition font-bold shadow-sm">Save</button>
                             </td>
-                        </tr>
-                    `;
+                        </tr>`;
                 });
             } catch (e) { 
                 console.error("Data load failed", e); 
             }
         }
 
-        // Approve or Reject Payment
         async function processPayment(paymentId, email, plan, action) {
             const password = localStorage.getItem('auraAdminPass');
             
-            if(!confirm(action === 'approve' ? `Approve ${plan} plan for ${email}?` : `Are you sure you want to reject this payment?`)) return;
-
+            if (!confirm(action === 'approve' ? `Approve ${plan} for ${email}?` : `Reject payment?`)) {
+                return;
+            }
+            
             try {
-                const res = await fetch('/api/admin/process-payment', {
+                const res = await fetch('/api/admin/process-payment', { 
                     method: 'POST', 
-                    headers: { 'Content-Type': 'application/json', 'Authorization': password },
-                    body: JSON.stringify({ paymentId, email, plan, action })
+                    headers: { 'Content-Type': 'application/json', 'Authorization': password }, 
+                    body: JSON.stringify({ paymentId, email, plan, action }) 
                 });
-
-                if(res.ok) { 
+                
+                if (res.ok) { 
                     alert(`Successfully ${action}d!`); 
-                    loadAdminData(password); // Reload the dashboard
+                    loadAdminData(password); 
                 } else { 
-                    alert("Action failed. Please try again."); 
+                    alert("Action failed."); 
                 }
-            } catch (error) {
-                alert("Connection error.");
+            } catch (error) { 
+                alert("Connection error."); 
             }
         }
 
-        // Update User Badge
         async function updateBadge(email) {
             const badge = document.getElementById(`badge-${email}`).value;
             const password = localStorage.getItem('auraAdminPass');
             
             try {
-                const res = await fetch('/api/admin/update-badge', {
+                const res = await fetch('/api/admin/update-badge', { 
                     method: 'POST', 
-                    headers: {'Content-Type': 'application/json', 'Authorization': password},
-                    body: JSON.stringify({ email, badge })
+                    headers: {'Content-Type': 'application/json', 'Authorization': password}, 
+                    body: JSON.stringify({ email, badge }) 
                 });
                 
-                if(res.ok) { 
-                    alert(`Badge for ${email} successfully updated to ${badge}`); 
-                    loadAdminData(password); // Reload the dashboard
+                if (res.ok) { 
+                    alert(`Badge updated to ${badge}`); 
+                    loadAdminData(password); 
                 } else { 
-                    alert("Failed to update badge."); 
+                    alert("Failed to update."); 
                 }
-            } catch (error) {
-                alert("Connection error.");
+            } catch (error) { 
+                alert("Connection error."); 
             }
         }
     </script>
