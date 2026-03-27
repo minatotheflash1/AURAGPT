@@ -9,13 +9,14 @@ const crypto = require('crypto');
 
 dotenv.config();
 const app = express();
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '50mb' })); // ফাইল আপলোডের জন্য লিমিট বাড়ানো হলো
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
+// --- অটোমেটিক ডাটাবেস টেবিল তৈরি ---
 async function initializeDatabase() {
     try {
         await pool.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(100), email VARCHAR(100) UNIQUE, phone VARCHAR(20), dob DATE, password VARCHAR(255), plan VARCHAR(20) DEFAULT 'FREE', badge VARCHAR(20) DEFAULT 'FREE', profile_pic TEXT, msg_count INT DEFAULT 0, video_count INT DEFAULT 0, limit_reset_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, plan_expires_at TIMESTAMP, role VARCHAR(20) DEFAULT 'user');`);
@@ -23,11 +24,15 @@ async function initializeDatabase() {
         await pool.query(`CREATE TABLE IF NOT EXISTS payments (id SERIAL PRIMARY KEY, user_email VARCHAR(100), phone VARCHAR(20), trx_id VARCHAR(100) UNIQUE, plan_requested VARCHAR(20), status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
         await pool.query(`CREATE TABLE IF NOT EXISTS chat_history (id SERIAL PRIMARY KEY, session_id VARCHAR(100), user_email VARCHAR(100), type VARCHAR(20), prompt TEXT, reply TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
         
+        await pool.query(`ALTER TABLE chat_history ADD COLUMN IF NOT EXISTS session_id VARCHAR(100);`).catch(()=>{});
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMP;`).catch(()=>{});
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS badge VARCHAR(20) DEFAULT 'FREE';`).catch(()=>{});
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_pic TEXT;`).catch(()=>{});
         
-        console.log("✅ Database ready with Badges and Profile Pics!");
-    } catch (err) { console.error("❌ DB init error:", err); }
+        console.log("✅ Database ready with Badges, Profile Pics & Replicate API Support!");
+    } catch (err) { 
+        console.error("❌ DB init error:", err); 
+    }
 }
 initializeDatabase();
 
@@ -35,16 +40,18 @@ const MASTER_ADMIN_ID = "8037371175";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD; 
 
 const transporter = nodemailer.createTransport({
-    service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    service: 'gmail', 
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
 });
 
+// --- Routes ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'register.html')));
 app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/logo.png', (req, res) => res.sendFile(path.join(__dirname, 'logo.png')));
 
-// Auth APIs
+// --- Authentication APIs ---
 app.post('/api/send-otp', async (req, res) => {
     const { email } = req.body;
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -52,7 +59,7 @@ app.post('/api/send-otp', async (req, res) => {
         await pool.query(`INSERT INTO otps (email, code, expires_at) VALUES ($1, $2, NOW() + INTERVAL '10 minutes') ON CONFLICT (email) DO UPDATE SET code = $2, expires_at = NOW() + INTERVAL '10 minutes'`, [email, code]);
         await transporter.sendMail({ from: '"AURAGPT" <no-reply@auragpt.com>', to: email, subject: 'Your Verification Code', text: `Your code is: ${code}` });
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: "OTP failed" }); }
+    } catch (e) { res.status(500).json({ error: "Failed to send OTP" }); }
 });
 
 app.post('/api/register', async (req, res) => {
@@ -80,20 +87,24 @@ app.post('/api/login', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Server error" }); }
 });
 
+// --- User Status & Profiles ---
 app.get('/api/user/status', async (req, res) => {
     const { email } = req.query;
     try {
-        let user = (await pool.query('SELECT name, plan, badge, profile_pic, plan_expires_at FROM users WHERE email = $1', [email])).rows[0];
+        let user = (await pool.query('SELECT name, plan, badge, profile_pic, msg_count, video_count, plan_expires_at FROM users WHERE email = $1', [email])).rows[0];
+        
+        // Auto-revert to FREE if 30 days passed (Except Admin/Owner)
         if(user && user.plan !== 'FREE' && user.plan_expires_at && new Date() > new Date(user.plan_expires_at)) {
-            await pool.query(`UPDATE users SET plan = 'FREE', badge = 'FREE', plan_expires_at = NULL WHERE email = $1 AND role != 'admin'`, [email]);
-            user.plan = 'FREE';
-            user.badge = 'FREE';
+            if(!['Admin', 'Owner'].includes(user.badge)) {
+                await pool.query(`UPDATE users SET plan = 'FREE', badge = 'FREE', plan_expires_at = NULL WHERE email = $1`, [email]);
+                user.plan = 'FREE';
+                user.badge = 'FREE';
+            }
         }
-        res.json(user);
-    } catch (e) { res.status(500).json({}); }
+        res.json(user || { error: "User not found" });
+    } catch (e) { res.status(500).json({ error: "Server error" }); }
 });
 
-// Update Profile Picture
 app.post('/api/user/update-pic', async (req, res) => {
     const { email, imageBase64 } = req.body;
     try {
@@ -102,7 +113,6 @@ app.post('/api/user/update-pic', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Failed" }); }
 });
 
-// Leaderboard API
 app.get('/api/leaderboard', async (req, res) => {
     try {
         const result = await pool.query(`SELECT name, email, badge FROM users WHERE badge IN ('Owner', 'Admin') ORDER BY badge DESC`);
@@ -110,7 +120,7 @@ app.get('/api/leaderboard', async (req, res) => {
     } catch (e) { res.status(500).json([]); }
 });
 
-// AI Request Logic
+// --- CORE AI LOGIC (Text & Video) ---
 app.post('/api/request', async (req, res) => {
     let { prompt, type, userEmail, sessionId, modelChoice } = req.body;
     if (!sessionId) sessionId = crypto.randomUUID();
@@ -120,6 +130,7 @@ app.post('/api/request', async (req, res) => {
         let user = userQuery.rows[0];
         if(!user) return res.status(404).json({ error: "User not found" });
 
+        // Subscription validation for Pro model
         if (modelChoice === 'pro' && !['PLUS', 'PRO', 'Admin', 'Owner'].includes(user.badge)) {
             return res.status(403).json({ reply: "✨ Pro model requires PLUS or PRO plan. Please upgrade your account." });
         }
@@ -131,8 +142,9 @@ app.post('/api/request', async (req, res) => {
 
         if (user.plan === 'FREE' && user.badge === 'FREE' && user.msg_count >= 100) return res.status(403).json({ reply: "Free limit reached. Wait 2 days or upgrade." });
         
+        // --- TEXT / PHOTO (DeepSeek) ---
         if (type === 'chat' || type === 'photo') {
-            const creatorInfo = `Your creator is Ononto Hasan from Mymensingh. He is a Computer Trainer, Designer, Developer, and Teacher at BRAC SDF IST Dept. He owns the FB page "Toxic naaa?" with 64k+ followers. You are a polite, helpful, and professional AI. If asked about your creator, give a proud summary.`;
+            const creatorInfo = `Identity: Your creator is Ononto Hasan from Mymensingh. He is a Computer Trainer, Designer, Developer, and Teacher at BRAC SDF IST Dept. He owns the FB page "Toxic naaa?" with 64k+ followers. You are AuraGPT. If asked about your creator, give a proud summary. Be professional but helpful.`;
 
             const previousMessages = [{ role: "system", content: creatorInfo }];
             const historyQuery = await pool.query(`SELECT prompt, reply FROM chat_history WHERE session_id = $1 ORDER BY created_at ASC`, [sessionId]);
@@ -148,24 +160,52 @@ app.post('/api/request', async (req, res) => {
             }, { headers: { 'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}` }});
             
             const reply = dsRes.data.choices[0].message.content;
-            if(user.plan !== 'PRO' && user.badge !== 'Owner' && user.badge !== 'Admin') await pool.query(`UPDATE users SET msg_count = msg_count + 1 WHERE email = $1`, [userEmail]);
+            
+            if(user.plan !== 'PRO' && !['Owner', 'Admin'].includes(user.badge)) {
+                await pool.query(`UPDATE users SET msg_count = msg_count + 1 WHERE email = $1`, [userEmail]);
+            }
             await pool.query(`INSERT INTO chat_history (session_id, user_email, type, prompt, reply) VALUES ($1, $2, $3, $4, $5)`, [sessionId, userEmail, type, prompt, reply]);
             res.json({ reply, sessionId }); 
         } 
+        // --- VIDEO (Replicate Text-to-Video API) ---
         else if (type === 'video') {
             if (user.plan === 'FREE' && user.badge === 'FREE') return res.status(403).json({ reply: "Video generation requires at least AURAGPT GO." });
+            
             try {
-                const rwRes = await axios.post('https://api.runwayml.com/v1/image_to_video', {
-                    model: "gen3a_turbo", promptText: prompt 
-                }, { headers: { 'Authorization': `Bearer ${process.env.RUNWAY_API_KEY}`, 'X-Runway-Version': '2024-11-06' }});
-                if(user.plan !== 'PRO' && !['Admin','Owner'].includes(user.badge)) await pool.query(`UPDATE users SET video_count = video_count + 1 WHERE email = $1`, [userEmail]);
-                await pool.query(`INSERT INTO chat_history (session_id, user_email, type, prompt, reply) VALUES ($1, $2, $3, $4, $5)`, [sessionId, userEmail, type, prompt, "Video Task ID: " + rwRes.data.id]);
-                res.json({ ...rwRes.data, sessionId });
-            } catch (err) { res.status(500).json({ reply: "Runway API Error" }); }
+                // Replicate API Call for Video Generation (Using Hotshot-XL for text-to-video)
+                const repRes = await axios.post('https://api.replicate.com/v1/predictions', {
+                    // Version hash for lucataco/hotshot-xl (Fast text-to-video model)
+                    version: "8ce33a01729f3dcc028f804c8651c6c5188f572621183181822c98d6268393cb",
+                    input: {
+                        prompt: prompt,
+                        mp4: true,
+                        steps: 30
+                    }
+                }, { 
+                    headers: { 
+                        'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if(user.plan !== 'PRO' && !['Admin','Owner'].includes(user.badge)) {
+                    await pool.query(`UPDATE users SET video_count = video_count + 1 WHERE email = $1`, [userEmail]);
+                }
+                
+                await pool.query(`INSERT INTO chat_history (session_id, user_email, type, prompt, reply) VALUES ($1, $2, $3, $4, $5)`, [sessionId, userEmail, type, prompt, "Video Task ID: " + repRes.data.id]);
+                
+                res.json({ id: repRes.data.id, sessionId });
+            } catch (apiErr) { 
+                console.error("Replicate API Error:", apiErr.response?.data || apiErr.message);
+                res.status(500).json({ reply: "Replicate Video API Error. Check Token." }); 
+            }
         }
-    } catch (error) { res.status(500).json({ reply: "Processing failed. Please try again." }); }
+    } catch (error) { 
+        res.status(500).json({ reply: "Processing failed. Please try again." }); 
+    }
 });
 
+// --- Chat History & Payments ---
 app.get('/api/history/sessions', async (req, res) => {
     const { email } = req.query;
     const result = await pool.query(`SELECT DISTINCT ON (session_id) session_id, prompt as title, created_at, type FROM chat_history WHERE user_email = $1 ORDER BY session_id, created_at ASC`, [email]);
@@ -186,32 +226,42 @@ app.post('/api/submit-payment', async (req, res) => {
     } catch (e) { res.status(500).json({ error: "Failed" }); }
 });
 
-// Admin Control
+// --- Admin Control Panel ---
 app.post('/api/admin/login', (req, res) => {
-    if (req.body.password === ADMIN_PASSWORD) res.json({ success: true }); else res.status(401).json({ error: "Unauthorized" });
+    if (req.body.password === ADMIN_PASSWORD) res.json({ success: true }); 
+    else res.status(401).json({ error: "Unauthorized" });
 });
+
 app.get('/api/admin/dashboard-data', async (req, res) => {
     if (req.headers.authorization !== ADMIN_PASSWORD) return res.status(401).json({ error: "Unauthorized" });
-    const users = (await pool.query(`SELECT id, name, email, plan, badge, msg_count, video_count, plan_expires_at FROM users ORDER BY id DESC`)).rows;
-    const payments = (await pool.query(`SELECT * FROM payments WHERE status = 'pending' ORDER BY created_at ASC`)).rows;
-    res.json({ users, payments });
+    try {
+        const users = (await pool.query(`SELECT id, name, email, plan, badge, msg_count, video_count, plan_expires_at FROM users ORDER BY id DESC`)).rows;
+        const payments = (await pool.query(`SELECT * FROM payments WHERE status = 'pending' ORDER BY created_at ASC`)).rows;
+        res.json({ users, payments });
+    } catch (e) { res.status(500).json({ error: "DB Error" }); }
 });
+
 app.post('/api/admin/process-payment', async (req, res) => {
     if (req.headers.authorization !== ADMIN_PASSWORD) return res.status(401).json({ error: "Unauthorized" });
     const { paymentId, email, plan, action } = req.body;
-    if (action === 'approve') {
-        await pool.query(`UPDATE users SET plan = $1, badge = $1, msg_count = 0, video_count = 0, plan_expires_at = NOW() + INTERVAL '30 days' WHERE email = $2`, [plan, email]);
-        await pool.query(`UPDATE payments SET status = 'approved' WHERE id = $1`, [paymentId]);
-    } else {
-        await pool.query(`UPDATE payments SET status = 'rejected' WHERE id = $1`, [paymentId]);
-    }
-    res.json({ success: true });
+    try {
+        if (action === 'approve') {
+            await pool.query(`UPDATE users SET plan = $1, badge = $1, msg_count = 0, video_count = 0, plan_expires_at = NOW() + INTERVAL '30 days' WHERE email = $2`, [plan, email]);
+            await pool.query(`UPDATE payments SET status = 'approved' WHERE id = $1`, [paymentId]);
+        } else {
+            await pool.query(`UPDATE payments SET status = 'rejected' WHERE id = $1`, [paymentId]);
+        }
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Process Failed" }); }
 });
+
 app.post('/api/admin/update-badge', async (req, res) => {
     if (req.headers.authorization !== ADMIN_PASSWORD) return res.status(401).json({ error: "Unauthorized" });
     const { email, badge } = req.body;
-    await pool.query(`UPDATE users SET badge = $1 WHERE email = $2`, [badge, email]);
-    res.json({ success: true });
+    try {
+        await pool.query(`UPDATE users SET badge = $1 WHERE email = $2`, [badge, email]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Update Failed" }); }
 });
 
 const PORT = process.env.PORT || 3000;
