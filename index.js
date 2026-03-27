@@ -16,8 +16,54 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
+// --- অটোমেটিক ডাটাবেস টেবিল তৈরি করার ফাংশন ---
+async function initializeDatabase() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100),
+                email VARCHAR(100) UNIQUE,
+                phone VARCHAR(20),
+                dob DATE,
+                password VARCHAR(255),
+                plan VARCHAR(20) DEFAULT 'FREE',
+                msg_count INT DEFAULT 0,
+                video_count INT DEFAULT 0,
+                limit_reset_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                role VARCHAR(20) DEFAULT 'user'
+            );
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS otps (
+                email VARCHAR(100) PRIMARY KEY,
+                code VARCHAR(6),
+                expires_at TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS payments (
+                id SERIAL PRIMARY KEY,
+                user_email VARCHAR(100),
+                phone VARCHAR(20),
+                trx_id VARCHAR(100) UNIQUE,
+                plan_requested VARCHAR(20),
+                status VARCHAR(20) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log("✅ Database tables checked and ready!");
+    } catch (err) {
+        console.error("❌ Database initialization error:", err);
+    }
+}
+
+// সার্ভার চালু হওয়ার সাথে সাথে ডাটাবেস চেক করবে
+initializeDatabase();
+
 const MASTER_ADMIN_ID = "8037371175";
 
+// Nodemailer Setup
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
@@ -42,6 +88,10 @@ app.post('/api/send-otp', async (req, res) => {
              ON CONFLICT (email) DO UPDATE SET code = $2, expires_at = NOW() + INTERVAL '10 minutes'`,
             [email, code]
         );
+        
+        // কনসোলে OTP প্রিন্ট করা হলো (টেস্টিংয়ের সুবিধার জন্য)
+        console.log(`[OTP GENERATED] For ${email}: ${code}`);
+        
         await transporter.sendMail({
             from: '"AURAGPT" <no-reply@auragpt.com>',
             to: email,
@@ -50,6 +100,7 @@ app.post('/api/send-otp', async (req, res) => {
         });
         res.json({ success: true });
     } catch (error) {
+        console.error("OTP Error:", error);
         res.status(500).json({ error: "Failed to send OTP" });
     }
 });
