@@ -108,28 +108,7 @@ app.post('/api/request', async (req, res) => {
         const userQuery = await pool.query(`SELECT * FROM users WHERE email = $1`, [userEmail]);
         const user = userQuery.rows[0];
         if(!user) return res.status(404).json({ error: "User not found" });
-
-        // Pro Model Restriction Check
-        if (modelChoice === 'pro' && !['PLUS', 'PRO'].includes(user.plan)) {
-            return res.status(403).json({ reply: "✨ Pro model requires PLUS or PRO plan. Please upgrade your account." });
-        }
-
-        if (new Date() > new Date(user.limit_reset_date)) {
-            await pool.query(`UPDATE users SET msg_count = 0, limit_reset_date = NOW() + INTERVAL '2 days' WHERE email = $1`, [userEmail]);
-            user.msg_count = 0;
-        }
-
-        if (user.plan === 'FREE' && user.msg_count >= 100) return res.status(403).json({ reply: "Free limit reached. Wait 2 days or upgrade." });
-        
-        // --- TEXT / PHOTO ---
-        if (type === 'chat' || type === 'photo') {
-            const previousMessages = [];
-            // --- Core AI Request API (System Prompt Update) ---
-app.post('/api/request', async (req, res) => {
-    let { prompt, type, userEmail, sessionId, modelChoice } = req.body;
-    if (!sessionId) sessionId = crypto.randomUUID();
-
-    try {
+        try {
         const userQuery = await pool.query(`SELECT * FROM users WHERE email = $1`, [userEmail]);
         const user = userQuery.rows[0];
 
@@ -150,6 +129,22 @@ app.post('/api/request', async (req, res) => {
         `;
 
         const previousMessages = [{ role: "system", content: creatorInfo + behaviorPrompt }];
+        // Pro Model Restriction Check
+        if (modelChoice === 'pro' && !['PLUS', 'PRO'].includes(user.plan)) {
+            return res.status(403).json({ reply: "✨ Pro model requires PLUS or PRO plan. Please upgrade your account." });
+        }
+
+        if (new Date() > new Date(user.limit_reset_date)) {
+            await pool.query(`UPDATE users SET msg_count = 0, limit_reset_date = NOW() + INTERVAL '2 days' WHERE email = $1`, [userEmail]);
+            user.msg_count = 0;
+        }
+
+        if (user.plan === 'FREE' && user.msg_count >= 100) return res.status(403).json({ reply: "Free limit reached. Wait 2 days or upgrade." });
+        
+        // --- TEXT / PHOTO ---
+        if (type === 'chat' || type === 'photo') {
+            const previousMessages = [];
+            
     
             // System Prompt settings based on Model Choice
             if (modelChoice === 'pro') {
