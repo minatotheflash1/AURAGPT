@@ -3,167 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AURAGPT</title>
+    <title>AuraGPT Admin Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; color: #0d0d0d; margin: 0; padding: 0; }
-        .sidebar { background-color: #f9f9f9; width: 260px; height: 100vh; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid #e5e5e5; transition: transform 0.3s ease; }
-        .sidebar.active { display: flex !important; position: absolute; z-index: 50; box-shadow: 4px 0 15px rgba(0,0,0,0.05); }
-        .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; color: #0d0d0d; font-size: 14px; transition: background-color 0.2s; margin-bottom: 2px; }
-        .sidebar-item:hover { background-color: #ececec; }
-        .header-icon { color: #4d4d4d; cursor: pointer; font-size: 18px; padding: 8px; border-radius: 6px; transition: 0.2s; }
-        .get-plus-btn { background-color: #f4f0ff; color: #8e59ff; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; border: none; }
-        .input-wrapper { background-color: #f4f4f4; border-radius: 30px; display: flex; align-items: center; padding: 8px 12px; max-width: 750px; width: 100%; margin: 0 auto; box-shadow: 0 0 15px rgba(0,0,0,0.02); }
-        .input-wrapper input { background: transparent; border: none; outline: none; flex-grow: 1; font-size: 16px; padding: 8px 12px; color: #0d0d0d; }
-        .round-btn { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; background-color: #000; color: #fff;}
-        .icon-btn { color: #666; font-size: 18px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; }
-        .icon-btn.active { color: #8e59ff; background-color: #f4f0ff; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
-        .modal.active { display: flex; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; }
+        .sidebar { background-color: #111827; color: white; width: 250px; height: 100vh; position: fixed; }
+        .main-content { margin-left: 250px; padding: 24px; width: calc(100% - 250px); }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 24px; }
+        .table-th { background-color: #f9fafb; text-align: left; padding: 12px; font-weight: 600; color: #4b5563; border-bottom: 2px solid #e5e7eb; }
+        .table-td { padding: 12px; border-bottom: 1px solid #e5e7eb; color: #1f2937; }
+        .badge { padding: 4px 8px; border-radius: 9999px; font-size: 12px; font-weight: bold; }
+        .badge-free { background: #e5e7eb; color: #374151; }
+        .badge-go { background: #dbeafe; color: #1e40af; }
+        .badge-plus { background: #f3e8ff; color: #6b21a8; }
+        .badge-pro { background: #fef3c7; color: #92400e; }
+        .btn-approve { background: #10a37f; color: white; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; border: none;}
+        .btn-approve:hover { background: #0d8c6d; }
+        .btn-reject { background: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; border: none; margin-left: 5px;}
+        
+        /* Login Overlay */
+        #adminLoginScreen { position: fixed; inset: 0; background-color: #111827; z-index: 9999; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
-<body class="flex h-screen overflow-hidden">
-    <div class="sidebar hidden md:flex p-3" id="sidebar">
-        <div class="flex justify-between items-center mb-6 px-2 pt-2">
-            <img src="/logo.png" alt="AuraGPT Logo" class="w-8 h-8 object-contain mix-blend-darken">
-            <i class="fa-solid fa-xmark header-icon text-gray-500 md:hidden" onclick="toggleSidebar()"></i>
-        </div>
-        <div class="flex-grow flex flex-col mt-2">
-            <div class="sidebar-item font-medium"><i class="fa-regular fa-pen-to-square" style="color:#000;"></i> New chat</div>
-            <div class="sidebar-item text-red-500 mt-auto" onclick="logout()"><i class="fa-solid fa-power-off"></i> Logout</div>
+<body>
+
+    <div id="adminLoginScreen">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center">
+            <img src="/logo.png" alt="AuraGPT" class="w-16 h-16 mx-auto mb-4 mix-blend-darken">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Admin Login</h2>
+            <input type="password" id="adminPassInput" placeholder="Enter Admin Password" class="w-full p-3 border rounded-lg mb-4 outline-none focus:border-[#10a37f]">
+            <button onclick="adminLogin()" id="loginBtn" class="w-full bg-[#10a37f] text-white font-bold p-3 rounded-lg hover:bg-[#0d8c6d] transition">Access Dashboard</button>
         </div>
     </div>
 
-    <div class="flex-1 flex flex-col relative h-full bg-white w-full">
-        <header class="flex justify-between items-center px-4 py-3">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-bars-staggered header-icon text-gray-500" onclick="toggleSidebar()"></i>
-                <div class="cursor-pointer text-[17px] font-semibold text-gray-800">AURAGPT</div>
+    <div class="sidebar p-5 hidden" id="dashboardSidebar">
+        <div class="flex items-center gap-3 mb-10">
+            <img src="/logo.png" alt="Logo" class="w-10 h-10 bg-white rounded-full p-1">
+            <h2 class="text-xl font-bold tracking-wider">Aura Admin</h2>
+        </div>
+        <ul class="space-y-4">
+            <li class="p-3 bg-gray-800 rounded-lg cursor-pointer"><i class="fa-solid fa-chart-line mr-2"></i> Dashboard</li>
+            <li class="p-3 hover:bg-gray-800 rounded-lg cursor-pointer text-gray-300 mt-10 text-red-400" onclick="adminLogout()"><i class="fa-solid fa-right-from-bracket mr-2"></i> Logout</li>
+        </ul>
+    </div>
+
+    <div class="main-content hidden" id="dashboardContent">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Dashboard Overview</h1>
+            <div class="bg-white px-4 py-2 rounded-lg shadow-sm font-bold text-gray-700">
+                <i class="fa-solid fa-user-shield text-[#10a37f] mr-2"></i> Super Admin
             </div>
-            <button class="get-plus-btn" onclick="openPaymentModal()"><i class="fa-solid fa-sparkles"></i> Get Plus</button>
         </header>
 
-        <div id="chatWindow" class="flex-1 flex flex-col items-center justify-start overflow-y-auto px-4 pt-10 pb-40 w-full">
-            <h1 id="welcomeText" class="text-[32px] font-normal text-[#0d0d0d] mb-12">Ready when you are.</h1>
-            <div id="messages" class="w-full max-w-3xl flex flex-col gap-6"></div>
+        <div class="grid grid-cols-3 gap-6 mb-8">
+            <div class="card border-l-4 border-[#10a37f] mb-0"><h3 class="text-gray-500 text-sm font-bold">TOTAL USERS</h3><p class="text-3xl font-bold mt-2" id="totalUsers">0</p></div>
+            <div class="card border-l-4 border-purple-500 mb-0"><h3 class="text-gray-500 text-sm font-bold">PENDING PAYMENTS</h3><p class="text-3xl font-bold mt-2" id="pendingPayments">0</p></div>
+            <div class="card border-l-4 border-blue-500 mb-0"><h3 class="text-gray-500 text-sm font-bold">VIDEOS GENERATED</h3><p class="text-3xl font-bold mt-2" id="totalVideos">0</p></div>
         </div>
 
-        <div class="absolute bottom-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 px-4">
-            <div class="input-wrapper">
-                <div class="flex gap-1 pr-2 border-r border-gray-300">
-                    <div class="icon-btn active" id="modeChat" onclick="setMode('chat')"><i class="fa-solid fa-message"></i></div>
-                    <div class="icon-btn" id="modePhoto" onclick="setMode('photo')"><i class="fa-solid fa-image"></i></div>
-                    <div class="icon-btn" id="modeVideo" onclick="setMode('video')"><i class="fa-solid fa-film"></i></div>
-                </div>
-                <input type="text" id="userInput" placeholder="Ask anything (DeepSeek)..." class="ml-2">
-                <div class="flex items-center gap-2 pr-1">
-                    <div onclick="processRequest()" class="round-btn hover:bg-gray-800 transition">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5v14M7 5v14M22 9v6M2 9v6"/></svg>
-                    </div>
-                </div>
-            </div>
+        <div class="card">
+            <h2 class="text-xl font-bold mb-4 text-gray-800"><i class="fa-solid fa-clock-rotate-left text-orange-500 mr-2"></i> Subscription Requests</h2>
+            <table class="w-full border-collapse">
+                <thead><tr><th class="table-th">Email</th><th class="table-th">bKash/Nagad No.</th><th class="table-th">TrxID</th><th class="table-th">Requested Plan</th><th class="table-th">Action</th></tr></thead>
+                <tbody id="paymentTableBody"></tbody>
+            </table>
         </div>
-    </div>
 
-    <div id="paymentModal" class="modal">
-        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
-            <i class="fa-solid fa-xmark absolute top-4 right-4 text-xl cursor-pointer text-gray-500" onclick="closePaymentModal()"></i>
-            <h2 class="text-2xl font-bold mb-4 text-center">Upgrade to AuraGPT</h2>
-            <div class="grid grid-cols-3 gap-2 mb-6 text-center">
-                <div class="border rounded-lg p-2"><div class="font-bold">GO</div><div class="text-sm">50৳</div><div class="text-[10px] text-gray-500">5 Videos</div></div>
-                <div class="border rounded-lg p-2 border-purple-500 bg-purple-50"><div class="font-bold text-purple-700">PLUS</div><div class="text-sm">200৳</div><div class="text-[10px] text-gray-500">20 Videos</div></div>
-                <div class="border rounded-lg p-2"><div class="font-bold">PRO</div><div class="text-sm">500৳</div><div class="text-[10px] text-gray-500">Unlimited</div></div>
-            </div>
-            <div class="bg-gray-100 p-4 rounded-xl mb-4 text-center">
-                <p class="text-sm text-gray-600 mb-2">Send money via bKash / Nagad to:</p>
-                <span class="text-xl font-bold tracking-wider">+8801846849460</span>
-                <button onclick="navigator.clipboard.writeText('+8801846849460'); alert('Copied!')" class="bg-gray-300 px-3 py-1 rounded text-sm ml-2">Copy</button>
-            </div>
-            <div class="space-y-3">
-                <input type="text" id="userPhone" placeholder="Your bKash/Nagad Number" class="w-full p-3 border rounded-lg outline-none">
-                <input type="text" id="trxId" placeholder="Transaction ID (TrxID)" class="w-full p-3 border rounded-lg outline-none">
-                <button onclick="submitPayment()" id="submitPayBtn" class="w-full bg-[#10a37f] text-white font-bold p-3 rounded-lg">Submit for Review</button>
-            </div>
+        <div class="card">
+            <h2 class="text-xl font-bold mb-4 text-gray-800"><i class="fa-solid fa-users text-blue-500 mr-2"></i> User Database</h2>
+            <table class="w-full border-collapse">
+                <thead><tr><th class="table-th">Name</th><th class="table-th">Email</th><th class="table-th">Plan</th><th class="table-th">Text Used</th><th class="table-th">Video Used</th></tr></thead>
+                <tbody id="userTableBody"></tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        const userEmail = localStorage.getItem('auraUserEmail');
-        if(!userEmail) window.location.href = '/';
+        // Check if already logged in
+        const savedPass = localStorage.getItem('auraAdminPass');
+        if(savedPass) { loadAdminData(savedPass); }
 
-        let currentMode = 'chat';
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
-        function openPaymentModal() { document.getElementById('paymentModal').classList.add('active'); }
-        function closePaymentModal() { document.getElementById('paymentModal').classList.remove('active'); }
-        function logout() { localStorage.removeItem('auraUserEmail'); window.location.href = '/'; }
-
-        function setMode(mode) {
-            currentMode = mode;
-            document.querySelectorAll('.icon-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
-            const placeholder = mode === 'chat' ? "Ask anything (DeepSeek)..." : (mode === 'photo' ? "Describe photo..." : "Describe video (Runway)...");
-            document.getElementById('userInput').placeholder = placeholder;
-        }
-
-        async function processRequest() {
-            const prompt = document.getElementById('userInput').value;
-            if(!prompt) return;
-
-            document.getElementById('welcomeText').style.display = 'none';
-            appendMessage('user', prompt);
-            document.getElementById('userInput').value = '';
-
-            const loadingId = "loader-" + Date.now();
-            appendMessage('ai', "Thinking...", loadingId);
-
-            try {
-                const res = await fetch('/api/request', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ prompt, type: currentMode, userEmail })
-                });
-                const data = await res.json();
-                
-                if(data.reply) {
-                    document.getElementById(loadingId).innerText = data.reply;
-                } else if(data.id) {
-                    document.getElementById(loadingId).innerHTML = `Generating video... (Task ID: ${data.id})`;
-                }
-            } catch (e) {
-                document.getElementById(loadingId).innerText = "Error: Connection failed.";
-            }
-        }
-
-        function appendMessage(role, content, id = null) {
-            const div = document.createElement('div');
-            div.className = `w-full flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
-            const bubble = document.createElement('div');
-            if(id) bubble.id = id;
-            bubble.className = role === 'user' ? 'bg-[#f4f4f4] text-[#0d0d0d] px-5 py-3 rounded-3xl max-w-[70%]' : 'text-[#0d0d0d] py-3 max-w-[100%]';
-            bubble.innerHTML = content;
-            div.appendChild(bubble);
-            document.getElementById('messages').appendChild(div);
-            document.getElementById('chatWindow').scrollTop = document.getElementById('chatWindow').scrollHeight;
-        }
-
-        async function submitPayment() {
-            const phone = document.getElementById('userPhone').value;
-            const trxId = document.getElementById('trxId').value;
-            if(!phone || !trxId) return alert("Fill all details");
+        async function adminLogin() {
+            const pass = document.getElementById('adminPassInput').value;
+            if(!pass) return alert("Please enter password!");
             
-            document.getElementById('submitPayBtn').innerText = "Submitting...";
-            const res = await fetch('/api/submit-payment', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userEmail, phone, trxId })
+            document.getElementById('loginBtn').innerText = "Checking...";
+            
+            // Validate password with backend
+            const res = await fetch('/api/admin/login', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ password: pass })
             });
+
             if(res.ok) {
-                alert("Sent to Admin!"); closePaymentModal();
+                localStorage.setItem('auraAdminPass', pass);
+                loadAdminData(pass);
             } else {
-                alert("Failed. TrxID might exist.");
+                alert("Incorrect Password!");
+                document.getElementById('loginBtn').innerText = "Access Dashboard";
             }
-            document.getElementById('submitPayBtn').innerText = "Submit for Review";
+        }
+
+        function adminLogout() {
+            localStorage.removeItem('auraAdminPass');
+            location.reload();
+        }
+
+        async function loadAdminData(password) {
+            try {
+                // Send password in headers for security
+                const res = await fetch('/api/admin/dashboard-data', {
+                    headers: { 'Authorization': password }
+                });
+                
+                if(res.status === 401) { adminLogout(); return; } // Password changed or invalid
+                
+                const data = await res.json();
+
+                // Reveal Dashboard
+                document.getElementById('adminLoginScreen').style.display = 'none';
+                document.getElementById('dashboardSidebar').classList.remove('hidden');
+                document.getElementById('dashboardContent').classList.remove('hidden');
+
+                // Update Stats
+                document.getElementById('totalUsers').innerText = data.users.length;
+                document.getElementById('pendingPayments').innerText = data.payments.length;
+                document.getElementById('totalVideos').innerText = data.users.reduce((acc, user) => acc + (user.video_count || 0), 0);
+
+                // Populate Payments
+                const pBody = document.getElementById('paymentTableBody');
+                pBody.innerHTML = data.payments.length === 0 ? '<tr><td colspan="5" class="table-td text-center text-gray-500">No pending requests.</td></tr>' : '';
+                data.payments.forEach(p => {
+                    const planColor = p.plan_requested === 'PRO' ? 'text-red-600' : (p.plan_requested === 'PLUS' ? 'text-purple-600' : 'text-blue-600');
+                    pBody.innerHTML += `
+                        <tr>
+                            <td class="table-td font-medium">${p.user_email}</td><td class="table-td">${p.phone}</td>
+                            <td class="table-td font-mono bg-gray-50 px-2 py-1 rounded">${p.trx_id}</td>
+                            <td class="table-td font-bold ${planColor}">${p.plan_requested}</td>
+                            <td class="table-td">
+                                <button onclick="processPayment(${p.id}, '${p.user_email}', '${p.plan_requested}', 'approve')" class="btn-approve">Approve</button>
+                                <button onclick="processPayment(${p.id}, '${p.user_email}', '${p.plan_requested}', 'reject')" class="btn-reject"><i class="fa-solid fa-xmark"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                // Populate Users
+                const uBody = document.getElementById('userTableBody');
+                uBody.innerHTML = '';
+                data.users.forEach(u => {
+                    let badgeClass = u.plan === 'PRO' ? 'badge-pro' : (u.plan === 'PLUS' ? 'badge-plus' : (u.plan === 'GO' ? 'badge-go' : 'badge-free'));
+                    uBody.innerHTML += `
+                        <tr><td class="table-td font-medium">${u.name}</td><td class="table-td">${u.email}</td>
+                        <td class="table-td"><span class="badge ${badgeClass}">${u.plan}</span></td>
+                        <td class="table-td">${u.msg_count}</td><td class="table-td">${u.video_count}</td></tr>
+                    `;
+                });
+            } catch (e) { console.error("Data load failed", e); }
+        }
+
+        async function processPayment(paymentId, email, plan, action) {
+            const password = localStorage.getItem('auraAdminPass');
+            if(!confirm(action === 'approve' ? `Approve ${plan} plan for ${email}?` : `Reject payment?`)) return;
+
+            const res = await fetch('/api/admin/process-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': password },
+                body: JSON.stringify({ paymentId, email, plan, action })
+            });
+
+            if(res.ok) {
+                alert(`Successfully ${action}d!`);
+                loadAdminData(password); // Reload
+            } else { alert("Action failed or Unauthorized."); }
         }
     </script>
 </body>
