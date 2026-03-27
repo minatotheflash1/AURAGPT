@@ -1,11 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>AURAGPT</title>
     
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        chatgpt: {
+                            main: '#212121',
+                            sidebar: '#171717',
+                            bubble: '#2f2f2f',
+                            border: 'rgba(255,255,255,0.1)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -21,10 +40,14 @@
     <style>
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            background-color: #ffffff; 
-            color: #0d0d0d; 
             margin: 0; 
             padding: 0; 
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Smooth Scroll for iOS */
+        .scroll-smooth {
+            -webkit-overflow-scrolling: touch;
         }
 
         /* Animations */
@@ -36,14 +59,15 @@
         
         /* Toast Notifications */
         #toast-container { 
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
+            position: fixed; top: env(safe-area-inset-top, 20px); left: 50%; transform: translateX(-50%); 
             z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; 
+            padding-top: 10px;
         }
         .toast { 
             background: #333; color: #fff; padding: 12px 24px; border-radius: 30px; 
             font-size: 14px; font-weight: 500; opacity: 0; transform: translateY(-20px); 
             transition: 0.3s; display: flex; align-items: center; gap: 8px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
         .toast.show { opacity: 1; transform: translateY(0); }
         .toast.success { background: #10a37f; }
@@ -51,28 +75,26 @@
 
         /* Sidebar Styles */
         .sidebar { 
-            background-color: #f9f9f9; width: 280px; height: 100vh; flex-shrink: 0; 
-            display: flex; flex-direction: column; transition: 0.3s; border-right: 1px solid #e5e5e5; z-index: 50;
+            width: 280px; height: 100vh; flex-shrink: 0; 
+            display: flex; flex-direction: column; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 50;
+            padding-bottom: env(safe-area-inset-bottom);
         }
         @media (max-width: 768px) { 
             .sidebar { position: fixed; transform: translateX(-100%); } 
-            .sidebar.active { transform: translateX(0); } 
+            .sidebar.active { transform: translateX(0); box-shadow: 4px 0 25px rgba(0,0,0,0.5); } 
         }
-        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 40; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; backdrop-filter: blur(2px);}
         .sidebar-overlay.active { display: block; }
         
         .sidebar-item { 
             display: flex; align-items: center; gap: 12px; padding: 12px 14px; 
             border-radius: 8px; cursor: pointer; font-size: 14px; transition: 0.2s; margin-bottom: 2px; 
         }
-        .sidebar-item:hover { background-color: #ececec; }
         
         .history-item { 
-            font-size: 13px; color: #4b5563; padding: 10px 14px; border-radius: 8px; 
+            font-size: 13px; padding: 12px 14px; border-radius: 8px; 
             cursor: pointer; transition: 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .history-item:hover { background-color: #e5e7eb; }
-        .history-item.active-session { background-color: #e5e5e5; font-weight: 600; color: #000; }
 
         /* Badges */
         .badge { 
@@ -92,47 +114,39 @@
             animation: glowingOwner 4s linear infinite; 
             box-shadow: 0 0 10px rgba(255,115,0,0.8); 
         }
-        @keyframes glowingOwner { 
-            0% { background-position: 0% 0%; } 
-            100% { background-position: 100% 0%; } 
-        }
+        @keyframes glowingOwner { 0% { background-position: 0% 0%; } 100% { background-position: 100% 0%; } }
 
         /* Gemini Input Styles */
         .gemini-input-wrapper { 
-            background-color: #f0f4f9; border-radius: 30px; display: flex; align-items: center; 
-            padding: 10px 14px; transition: 0.3s; width: 100%; max-width: 820px; margin: 0 auto;
+            border-radius: 30px; display: flex; align-items: center; 
+            padding: 8px 12px; transition: 0.3s; width: 100%; max-width: 820px; margin: 0 auto;
         }
-        .gemini-input-wrapper:focus-within { background-color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
         .gemini-input-wrapper input { 
             background: transparent; border: none; outline: none; flex-grow: 1; 
             font-size: 16px; padding: 12px 14px; width: 100%; 
         }
         
         .gemini-icon-btn, .gemini-send-btn { 
-            font-size: 20px; width: 42px; height: 42px; display: flex; align-items: center; 
+            font-size: 20px; width: 44px; height: 44px; display: flex; align-items: center; 
             justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; 
         }
-        .gemini-icon-btn { color: #444746; }
-        .gemini-icon-btn:hover { background-color: #e1e5ea; }
-        .gemini-send-btn { color: #b3b3b3; }
-        .gemini-send-btn.active { color: #0b57d0; background-color: #d3e3fd; }
         
         .mode-btn { 
-            color: #666; font-size: 16px; width: 36px; height: 36px; display: flex; 
+            font-size: 16px; width: 38px; height: 38px; display: flex; 
             align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; 
         }
-        .mode-btn.active { color: #8e59ff; background-color: #f4f0ff; }
         
         /* Modal Styles */
         .modal { 
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); 
-            z-index: 100; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; backdrop-filter: blur(2px);
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); 
+            z-index: 100; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; backdrop-filter: blur(4px);
         }
         .modal.active { display: flex; opacity: 1; }
         
         /* Code Block Copy UI */
         .code-container { 
             background: #1e1e1e; border-radius: 12px; overflow: hidden; margin: 15px 0; font-family: monospace; 
+            border: 1px solid rgba(255,255,255,0.1);
         }
         .code-header { 
             background: #2d2d2d; padding: 8px 16px; display: flex; justify-content: space-between; 
@@ -140,156 +154,199 @@
         }
         .code-copy-btn { cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
         .code-copy-btn:hover { color: #fff; }
-        .code-content { padding: 16px; overflow-x: auto; color: #d4d4d4; font-size: 14px; margin: 0;}
+        .code-content { padding: 16px; overflow-x: auto; color: #d4d4d4; font-size: 14px; margin: 0; -webkit-overflow-scrolling: touch;}
+
+        /* Bottom safe area for iOS devices */
+        .bottom-safe-area {
+            padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+        }
     </style>
 </head>
-<body class="flex h-screen overflow-hidden">
+<body class="flex h-screen overflow-hidden bg-white dark:bg-chatgpt-main text-[#0d0d0d] dark:text-[#ececec] transition-colors duration-300">
     
     <div id="toast-container"></div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-    <div class="sidebar md:flex p-3" id="sidebar">
+    <div class="sidebar md:flex p-3 bg-[#f9f9f9] dark:bg-chatgpt-sidebar border-r border-[#e5e5e5] dark:border-chatgpt-border" id="sidebar">
         <div class="flex justify-between items-center mb-6 px-2 pt-2">
-            <img src="/logo.png" class="w-8 h-8 mix-blend-darken">
-            <i class="fa-solid fa-xmark text-xl text-gray-500 md:hidden cursor-pointer" onclick="toggleSidebar()"></i>
+            <div class="flex items-center gap-2">
+                <img src="/logo.png" class="w-8 h-8 mix-blend-darken dark:mix-blend-normal dark:bg-white dark:rounded-full dark:p-1">
+            </div>
+            <i class="fa-solid fa-xmark text-xl text-gray-500 dark:text-gray-400 md:hidden cursor-pointer p-2" onclick="toggleSidebar()"></i>
         </div>
         
-        <div class="sidebar-item border shadow-sm font-bold" onclick="startNewChat()">
+        <div class="sidebar-item border border-gray-200 dark:border-white/10 shadow-sm font-bold hover:bg-gray-200 dark:hover:bg-white/10" onclick="startNewChat()">
             <i class="fa-regular fa-pen-to-square"></i> New chat
         </div>
         
-        <div class="sidebar-item mt-4 text-purple-600 bg-purple-50 font-bold" onclick="openLeaderboard()">
+        <div class="sidebar-item mt-4 text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 font-bold hover:bg-purple-100 dark:hover:bg-purple-900/40" onclick="openLeaderboard()">
             <i class="fa-solid fa-trophy"></i> Leaderboard
         </div>
         
-        <div class="flex-grow overflow-y-auto mt-4 space-y-1" id="chatHistoryList">
-            <p class="text-xs text-gray-400 font-bold px-2 mb-2">RECENT</p>
-        </div>
+        <div class="flex-grow overflow-y-auto mt-4 space-y-1 scroll-smooth" id="chatHistoryList">
+            <p class="text-xs text-gray-400 dark:text-gray-500 font-bold px-2 mb-2">RECENT</p>
+            </div>
         
-        <div class="mt-auto border-t pt-4">
+        <div class="mt-auto border-t border-gray-200 dark:border-white/10 pt-4">
+            <div class="sidebar-item hover:bg-gray-200 dark:hover:bg-white/10 mb-3" onclick="toggleTheme()">
+                <i id="themeIcon" class="fa-regular fa-moon"></i> <span id="themeText">Dark Mode</span>
+            </div>
+
             <div class="px-2 mb-3 flex items-center justify-between">
                 <div>
-                    <div class="text-sm font-bold text-gray-800 truncate w-32" id="sidebarUserName">User</div>
+                    <div class="text-sm font-bold truncate w-32" id="sidebarUserName">User</div>
                     <div><span id="sidebarUserBadge" class="badge badge-FREE">FREE</span></div>
                 </div>
             </div>
-            <div class="sidebar-item text-red-500 hover:bg-red-50" onclick="logout()">
+            <div class="sidebar-item text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20" onclick="logout()">
                 <i class="fa-solid fa-power-off"></i> Logout
             </div>
         </div>
     </div>
 
-    <div class="flex-1 flex flex-col relative h-full bg-white">
-        <header class="flex justify-between items-center px-4 py-3 border-b border-gray-50">
+    <div class="flex-1 flex flex-col relative h-full">
+        <header class="flex justify-between items-center px-4 py-3 border-b border-gray-50 dark:border-white/10 bg-white/80 dark:bg-chatgpt-main/80 backdrop-blur-md z-20 pt-[calc(0.75rem+env(safe-area-inset-top))]">
             <div class="flex items-center gap-3">
-                <i class="fa-solid fa-bars text-xl text-gray-500 md:hidden cursor-pointer" onclick="toggleSidebar()"></i>
-                <i class="fa-solid fa-sidebar text-xl text-gray-500 hidden md:block cursor-pointer" onclick="toggleSidebarPC()"></i>
-                <div class="font-bold text-gray-800 hidden sm:block">AURAGPT</div>
+                <div class="p-2 -ml-2 cursor-pointer md:hidden hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition" onclick="toggleSidebar()">
+                    <i class="fa-solid fa-bars text-xl text-gray-500 dark:text-gray-400"></i>
+                </div>
+                <div class="p-2 -ml-2 cursor-pointer hidden md:block hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition" onclick="toggleSidebarPC()">
+                    <i class="fa-solid fa-sidebar text-xl text-gray-500 dark:text-gray-400"></i>
+                </div>
+                <div class="font-bold hidden sm:block">AURAGPT</div>
             </div>
             
-            <div class="flex bg-gray-100 p-1 rounded-xl">
-                <button id="mod-fast" onclick="selectAIModel('fast')" class="px-4 py-1.5 rounded-lg text-sm font-bold bg-white shadow-sm">⚡ Fast</button>
-                <button id="mod-pro" onclick="selectAIModel('pro')" class="px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500">✨ Pro</button>
-                <button id="mod-think" onclick="selectAIModel('think')" class="px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500">🧠 Think</button>
+            <div class="flex bg-gray-100 dark:bg-[#2f2f2f] p-1 rounded-xl">
+                <button id="mod-fast" onclick="selectAIModel('fast')" class="px-4 py-1.5 rounded-lg text-sm font-bold bg-white dark:bg-[#424242] shadow-sm text-gray-800 dark:text-white transition">⚡ Fast</button>
+                <button id="mod-pro" onclick="selectAIModel('pro')" class="px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition">✨ Pro</button>
+                <button id="mod-think" onclick="selectAIModel('think')" class="px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition">🧠 Think</button>
             </div>
 
-            <div class="flex items-center gap-4">
-                <button id="headerUpgradeBtn" class="bg-purple-100 text-purple-600 px-4 py-1.5 rounded-full text-sm font-bold hidden sm:block" onclick="openPaymentModal()">Upgrade</button>
-                <div class="relative cursor-pointer" onclick="document.getElementById('profilePicInput').click()" title="Change Profile Picture">
+            <div class="flex items-center gap-3">
+                <button id="headerUpgradeBtn" class="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-4 py-1.5 rounded-full text-sm font-bold hidden sm:block hover:bg-purple-200 dark:hover:bg-purple-900/50 transition" onclick="openPaymentModal()">Upgrade</button>
+                <div class="relative cursor-pointer group" onclick="document.getElementById('profilePicInput').click()" title="Change Profile Picture">
                     <input type="file" id="profilePicInput" accept="image/*" style="display:none;" onchange="uploadProfilePic(event)">
-                    <img id="topAvatar" src="https://ui-avatars.com/api/?name=U&background=random" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200 hover:border-[#10a37f] transition">
+                    <img id="topAvatar" src="https://ui-avatars.com/api/?name=U&background=random" class="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover border-2 border-transparent group-hover:border-[#10a37f] transition">
                 </div>
             </div>
         </header>
 
-        <div id="chatWindow" class="flex-1 overflow-y-auto px-4 pt-6 pb-40 scroll-smooth">
-            <h1 id="welcomeText" class="text-3xl md:text-4xl font-normal text-center text-[#0d0d0d] mb-12 mt-10 animate-fade-up">
+        <div id="chatWindow" class="flex-1 overflow-y-auto px-4 pt-6 pb-32 scroll-smooth">
+            <h1 id="welcomeText" class="text-3xl md:text-4xl font-normal text-center mb-12 mt-10 animate-fade-up">
                 Hello, <span id="welcomeName">User</span>
             </h1>
             <div id="messages" class="max-w-3xl mx-auto flex flex-col gap-6"></div>
         </div>
 
-        <div class="absolute bottom-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-6 pb-4 px-4">
+        <div class="absolute bottom-0 w-full bg-gradient-to-t from-white via-white to-transparent dark:from-chatgpt-main dark:via-chatgpt-main pt-8 bottom-safe-area px-4 z-20">
             <div class="max-w-[820px] mx-auto relative">
                 
-                <div id="attachmentPreview" class="hidden items-center gap-2 p-2 bg-blue-50 border border-blue-100 rounded-t-xl mb-[-15px] w-max z-0 relative">
-                    <i class="fa-solid fa-file text-[#0b57d0]"></i> 
-                    <span id="attachedFileName" class="text-xs font-bold text-gray-700 truncate max-w-[150px]"></span>
-                    <i class="fa-solid fa-xmark text-gray-400 cursor-pointer hover:text-red-500 ml-2" onclick="removeAttachment()"></i>
+                <div id="attachmentPreview" class="hidden items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-t-xl mb-[-15px] w-max z-0 relative">
+                    <i class="fa-solid fa-file text-[#0b57d0] dark:text-blue-400"></i> 
+                    <span id="attachedFileName" class="text-xs font-bold text-gray-700 dark:text-gray-300 truncate max-w-[150px]"></span>
+                    <i class="fa-solid fa-xmark text-gray-400 cursor-pointer hover:text-red-500 ml-2 p-1" onclick="removeAttachment()"></i>
                 </div>
                 
-                <div class="gemini-input-wrapper shadow-lg relative z-10">
+                <div class="gemini-input-wrapper shadow-lg bg-[#f0f4f9] dark:bg-[#2f2f2f] border border-transparent dark:border-white/10 relative z-10">
                     <input type="file" id="fileUploadInput" onchange="handleFileSelect(event)" style="display:none;">
-                    <div class="gemini-icon-btn" onclick="document.getElementById('fileUploadInput').click()">
+                    <div class="gemini-icon-btn text-[#444746] dark:text-gray-300 hover:bg-[#e1e5ea] dark:hover:bg-white/10" onclick="document.getElementById('fileUploadInput').click()">
                         <i class="fa-solid fa-plus"></i>
                     </div>
 
-                    <div class="flex gap-1 pl-1 border-l border-gray-300 ml-1">
-                        <div class="mode-btn active" id="modeChat" onclick="setMode('chat')"><i class="fa-solid fa-message"></i></div>
-                        <div class="mode-btn" id="modePhoto" onclick="setMode('photo')"><i class="fa-solid fa-image"></i></div>
-                        <div class="mode-btn" id="modeVideo" onclick="setMode('video')"><i class="fa-solid fa-film"></i></div>
+                    <div class="flex gap-1 pl-1 border-l border-gray-300 dark:border-gray-600 ml-1">
+                        <div class="mode-btn active text-[#666] dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10" id="modeChat" onclick="setMode('chat')"><i class="fa-solid fa-message"></i></div>
+                        <div class="mode-btn text-[#666] dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10" id="modePhoto" onclick="setMode('photo')"><i class="fa-solid fa-image"></i></div>
+                        <div class="mode-btn text-[#666] dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10" id="modeVideo" onclick="setMode('video')"><i class="fa-solid fa-film"></i></div>
                     </div>
 
-                    <input type="text" id="userInput" placeholder="Ask AuraGPT..." autocomplete="off" oninput="toggleSendIcon()">
+                    <input type="text" id="userInput" class="text-[#1f1f1f] dark:text-white placeholder-[#444746] dark:placeholder-gray-400" placeholder="Ask AuraGPT..." autocomplete="off" oninput="toggleSendIcon()">
                     
                     <div class="flex items-center gap-1">
-                        <div id="micBtn" onclick="startVoiceRecognition()" class="gemini-icon-btn">
+                        <div id="micBtn" onclick="startVoiceRecognition()" class="gemini-icon-btn text-[#444746] dark:text-gray-300 hover:bg-[#e1e5ea] dark:hover:bg-white/10">
                             <i class="fa-solid fa-microphone"></i>
                         </div>
-                        <div id="sendBtn" onclick="processRequest()" class="gemini-send-btn hidden">
+                        <div id="sendBtn" onclick="processRequest()" class="gemini-send-btn hidden text-[#b3b3b3] dark:text-gray-500">
                             <i class="fa-solid fa-paper-plane"></i>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="text-center text-[11px] text-gray-400 mt-3">AuraGPT can make mistakes. Check important info.</div>
+            <div class="text-center text-[11px] text-gray-400 dark:text-gray-500 mt-3 pb-1">AuraGPT can make mistakes. Check important info.</div>
         </div>
     </div>
 
     <div id="leaderboardModal" class="modal">
-        <div class="bg-white w-full max-w-md rounded-3xl p-6 relative shadow-2xl mx-4">
-            <i class="fa-solid fa-xmark absolute top-4 right-4 text-xl cursor-pointer text-gray-500 hover:text-red-500" onclick="closeLeaderboard()"></i>
+        <div class="bg-white dark:bg-[#212121] dark:border dark:border-white/10 w-full max-w-md rounded-3xl p-6 relative shadow-2xl mx-4">
+            <i class="fa-solid fa-xmark absolute top-4 right-4 text-xl cursor-pointer text-gray-500 hover:text-red-500 p-2" onclick="closeLeaderboard()"></i>
             <h2 class="text-2xl font-bold mb-4 text-center"><i class="fa-solid fa-trophy text-yellow-500"></i> Aura Leaderboard</h2>
-            <div id="leaderboardList" class="space-y-3 max-h-[300px] overflow-y-auto pr-2"></div>
+            <div id="leaderboardList" class="space-y-3 max-h-[300px] overflow-y-auto pr-2 scroll-smooth"></div>
         </div>
     </div>
 
     <div id="paymentModal" class="modal">
-        <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl relative mx-4">
-            <i class="fa-solid fa-xmark absolute top-4 right-4 text-xl cursor-pointer text-gray-500 hover:text-red-500 transition" onclick="closePaymentModal()"></i>
-            <h2 class="text-2xl font-bold mb-4 text-center text-gray-800">Upgrade to AuraGPT</h2>
+        <div class="bg-white dark:bg-[#212121] dark:border dark:border-white/10 w-full max-w-md rounded-3xl p-6 shadow-2xl relative mx-4">
+            <i class="fa-solid fa-xmark absolute top-4 right-4 text-xl cursor-pointer text-gray-500 hover:text-red-500 transition p-2" onclick="closePaymentModal()"></i>
+            <h2 class="text-2xl font-bold mb-4 text-center">Upgrade to AuraGPT</h2>
             
             <div class="grid grid-cols-3 gap-2 mb-6 text-center">
-                <div id="plan-GO" onclick="selectPlan('GO')" class="border rounded-lg p-2 cursor-pointer hover:border-purple-500">
-                    <div class="font-bold">GO</div><div class="text-sm">50৳</div><div class="text-[10px] text-gray-500">5 Videos / 30 Days</div>
+                <div id="plan-GO" onclick="selectPlan('GO')" class="border dark:border-white/10 rounded-lg p-2 cursor-pointer hover:border-purple-500 transition">
+                    <div class="font-bold">GO</div><div class="text-sm">50৳</div><div class="text-[10px] text-gray-500">5 Videos</div>
                 </div>
-                <div id="plan-PLUS" onclick="selectPlan('PLUS')" class="border rounded-lg p-2 cursor-pointer border-purple-500 bg-purple-50">
-                    <div class="font-bold text-purple-700">PLUS</div><div class="text-sm">200৳</div><div class="text-[10px] text-gray-500">20 Videos / 30 Days</div>
+                <div id="plan-PLUS" onclick="selectPlan('PLUS')" class="border border-purple-500 bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 cursor-pointer transition">
+                    <div class="font-bold text-purple-700 dark:text-purple-400">PLUS</div><div class="text-sm">200৳</div><div class="text-[10px] text-gray-500">20 Videos</div>
                 </div>
-                <div id="plan-PRO" onclick="selectPlan('PRO')" class="border rounded-lg p-2 cursor-pointer hover:border-purple-500">
-                    <div class="font-bold">PRO</div><div class="text-sm">500৳</div><div class="text-[10px] text-gray-500">Unlimited / 30 Days</div>
+                <div id="plan-PRO" onclick="selectPlan('PRO')" class="border dark:border-white/10 rounded-lg p-2 cursor-pointer hover:border-purple-500 transition">
+                    <div class="font-bold">PRO</div><div class="text-sm">500৳</div><div class="text-[10px] text-gray-500">Unlimited</div>
                 </div>
             </div>
             
-            <div class="bg-gray-50 p-4 rounded-xl mb-4 text-center border border-gray-100">
+            <div class="bg-gray-50 dark:bg-[#2f2f2f] p-4 rounded-xl mb-4 text-center border border-gray-100 dark:border-transparent">
                 <p class="text-sm text-gray-500 mb-2">Send money via bKash / Nagad to:</p>
                 <div class="flex items-center justify-center gap-2">
-                    <span class="text-xl font-bold tracking-wider text-gray-800">+8801846849460</span>
-                    <button onclick="navigator.clipboard.writeText('+8801846849460'); showToast('Copied!', 'success');" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-md text-sm">
+                    <span class="text-xl font-bold tracking-wider">+8801846849460</span>
+                    <button onclick="navigator.clipboard.writeText('+8801846849460'); showToast('Copied!', 'success');" class="bg-gray-200 dark:bg-[#424242] hover:bg-gray-300 dark:hover:bg-[#525252] px-3 py-1 rounded-md text-sm transition">
                         <i class="fa-regular fa-copy"></i>
                     </button>
                 </div>
             </div>
             
             <div class="space-y-3">
-                <input type="text" id="userPhone" placeholder="Your bKash/Nagad Number" class="w-full p-3 border rounded-xl outline-none focus:border-purple-500 transition">
-                <input type="text" id="trxId" placeholder="Transaction ID (TrxID)" class="w-full p-3 border rounded-xl outline-none focus:border-purple-500 transition">
+                <input type="text" id="userPhone" placeholder="Your bKash/Nagad Number" class="w-full p-3 border dark:border-white/10 dark:bg-[#2f2f2f] rounded-xl outline-none focus:border-purple-500 transition">
+                <input type="text" id="trxId" placeholder="Transaction ID (TrxID)" class="w-full p-3 border dark:border-white/10 dark:bg-[#2f2f2f] rounded-xl outline-none focus:border-purple-500 transition">
                 <button onclick="submitPayment()" id="submitPayBtn" class="w-full bg-[#10a37f] text-white font-bold p-3 rounded-xl hover:bg-[#0d8c6d] transition shadow-md">Submit for Review</button>
             </div>
         </div>
     </div>
 
     <script>
+        // --- Dark Mode Logic ---
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+                icon.className = 'fa-regular fa-moon';
+                text.innerText = 'Dark Mode';
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                icon.className = 'fa-regular fa-sun';
+                text.innerText = 'Light Mode';
+            }
+        }
+
+        // Initialize Theme on load
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            document.addEventListener("DOMContentLoaded", () => {
+                document.getElementById('themeIcon').className = 'fa-regular fa-sun';
+                document.getElementById('themeText').innerText = 'Light Mode';
+            });
+        }
+
         // Check Authentication
         const userEmail = localStorage.getItem('auraUserEmail');
         if(!userEmail) window.location.href = '/';
@@ -370,28 +427,26 @@
         function formatMarkdown(text) {
             let html = marked.parse(text);
             
-            // Format specific language code blocks
             html = html.replace(/<pre><code class="language-(.*?)">([\s\S]*?)<\/code><\/pre>/g, function(match, lang, code) {
                 const rawCode = encodeURIComponent(code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
                 return `<div class="code-container">
                             <div class="code-header">
                                 <span class="uppercase">${lang}</span>
                                 <div class="code-copy-btn" onclick="navigator.clipboard.writeText(decodeURIComponent('${rawCode}')); showToast('Copied to clipboard!')">
-                                    <i class="fa-regular fa-copy"></i> Copy code
+                                    <i class="fa-regular fa-copy"></i> Copy
                                 </div>
                             </div>
                             <pre class="code-content">${code}</pre>
                         </div>`;
             });
             
-            // Format generic code blocks
             html = html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, function(match, code) {
                 const rawCode = encodeURIComponent(code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
                 return `<div class="code-container">
                             <div class="code-header">
                                 <span>Code</span>
                                 <div class="code-copy-btn" onclick="navigator.clipboard.writeText(decodeURIComponent('${rawCode}')); showToast('Copied to clipboard!')">
-                                    <i class="fa-regular fa-copy"></i> Copy code
+                                    <i class="fa-regular fa-copy"></i> Copy
                                 </div>
                             </div>
                             <pre class="code-content">${code}</pre>
@@ -411,10 +466,10 @@
             
             data.forEach(u => {
                 list.innerHTML += `
-                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100 shadow-sm">
+                <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-[#2f2f2f] rounded-xl border border-gray-100 dark:border-transparent shadow-sm">
                     <div>
-                        <div class="font-bold text-sm text-gray-800">${u.name}</div>
-                        <div class="text-xs text-gray-500">${u.email}</div>
+                        <div class="font-bold text-sm">${u.name}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">${u.email}</div>
                     </div>
                     <span class="badge badge-${u.badge}">${u.badge}</span>
                 </div>`;
@@ -436,11 +491,11 @@
             ['fast', 'pro', 'think'].forEach(m => {
                 const btn = document.getElementById('mod-'+m);
                 if(m === model) {
-                    btn.classList.add('bg-white', 'shadow-sm', 'text-gray-800');
-                    btn.classList.remove('text-gray-500');
+                    btn.classList.add('bg-white', 'dark:bg-[#424242]', 'shadow-sm', 'text-gray-800', 'dark:text-white');
+                    btn.classList.remove('text-gray-500', 'dark:text-gray-400');
                 } else {
-                    btn.classList.remove('bg-white', 'shadow-sm', 'text-gray-800');
-                    btn.classList.add('text-gray-500');
+                    btn.classList.remove('bg-white', 'dark:bg-[#424242]', 'shadow-sm', 'text-gray-800', 'dark:text-white');
+                    btn.classList.add('text-gray-500', 'dark:text-gray-400');
                 }
             });
         }
@@ -451,10 +506,10 @@
             const sessions = await res.json();
             
             const container = document.getElementById('chatHistoryList');
-            container.innerHTML = '<p class="text-xs text-gray-400 font-bold px-2 mb-2 uppercase">Recent</p>';
+            container.innerHTML = '<p class="text-xs text-gray-400 dark:text-gray-500 font-bold px-2 mb-2 uppercase">Recent</p>';
             
             sessions.forEach(item => {
-                const activeClass = item.session_id === currentSessionId ? 'active-session' : '';
+                const activeClass = item.session_id === currentSessionId ? 'active-session dark:bg-white/10 dark:text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5';
                 container.innerHTML += `<div class="history-item ${activeClass}" onclick="loadChatSession('${item.session_id}')">${item.title}</div>`;
             });
         }
@@ -522,8 +577,14 @@
         // Set Input Mode
         function setMode(mode) {
             currentMode = mode; 
-            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+            document.querySelectorAll('.mode-btn').forEach(b => {
+                b.classList.remove('active', 'text-[#8e59ff]', 'bg-[#f4f0ff]');
+                b.classList.add('text-[#666]', 'dark:text-gray-400');
+            });
+            
+            const activeBtn = document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1));
+            activeBtn.classList.add('active');
+            activeBtn.classList.remove('text-[#666]', 'dark:text-gray-400');
             
             if(mode === 'chat') {
                 document.getElementById('userInput').placeholder = "Ask AuraGPT...";
@@ -541,11 +602,11 @@
             if(val || attachedFile) { 
                 micBtn.style.display = 'none'; 
                 sendBtn.style.display = 'flex'; 
-                sendBtn.classList.add('active'); 
+                sendBtn.classList.add('active', 'text-[#0b57d0]', 'bg-[#d3e3fd]', 'dark:bg-blue-900/30', 'dark:text-blue-400'); 
             } else { 
                 micBtn.style.display = 'flex'; 
                 sendBtn.style.display = 'none'; 
-                sendBtn.classList.remove('active'); 
+                sendBtn.classList.remove('active', 'text-[#0b57d0]', 'bg-[#d3e3fd]', 'dark:bg-blue-900/30', 'dark:text-blue-400'); 
             }
         }
 
@@ -626,10 +687,10 @@
             if(id) b.id = id;
             
             if (role === 'user') { 
-                b.className = 'bg-[#f4f4f4] text-[#0d0d0d] px-5 py-3 rounded-3xl max-w-[75%] whitespace-pre-wrap'; 
+                b.className = 'bg-[#f4f4f4] dark:bg-[#2f2f2f] text-[#0d0d0d] dark:text-[#ececec] px-5 py-3 rounded-3xl max-w-[85%] md:max-w-[75%] whitespace-pre-wrap shadow-sm'; 
                 b.innerText = content; 
             } else { 
-                b.className = 'prose prose-slate max-w-[100%] leading-relaxed py-3'; 
+                b.className = 'prose prose-slate dark:prose-invert max-w-[100%] leading-relaxed py-3'; 
                 b.innerHTML = content === "Thinking..." ? content : formatMarkdown(content); 
                 if(content!=="Thinking..." && window.MathJax) {
                     MathJax.typesetPromise([b]); 
@@ -655,11 +716,11 @@
             ['GO','PLUS','PRO'].forEach(p => {
                 const el = document.getElementById('plan-'+p);
                 if(p===plan) { 
-                    el.classList.add('border-purple-500', 'bg-purple-50'); 
-                    el.querySelector('.font-bold').classList.add('text-purple-700'); 
+                    el.classList.add('border-purple-500', 'bg-purple-50', 'dark:bg-purple-900/20'); 
+                    el.querySelector('.font-bold').classList.add('text-purple-700', 'dark:text-purple-400'); 
                 } else { 
-                    el.classList.remove('border-purple-500', 'bg-purple-50'); 
-                    el.querySelector('.font-bold').classList.remove('text-purple-700'); 
+                    el.classList.remove('border-purple-500', 'bg-purple-50', 'dark:bg-purple-900/20'); 
+                    el.querySelector('.font-bold').classList.remove('text-purple-700', 'dark:text-purple-400'); 
                 }
             });
         }
