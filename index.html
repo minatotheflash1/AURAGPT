@@ -8,37 +8,57 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; color: #0d0d0d; margin: 0; padding: 0; }
+        
+        /* Animations */
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-up { animation: fadeUp 0.4s ease-out forwards; }
+        
+        /* Toast Popup Styles */
+        #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: #333; color: #fff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); display: flex; align-items: center; gap: 8px; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background: #10a37f; }
+        .toast.error { background: #ef4444; }
+
         .sidebar { background-color: #f9f9f9; width: 260px; height: 100vh; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid #e5e5e5; transition: transform 0.3s ease; }
         .sidebar.active { display: flex !important; position: absolute; z-index: 50; box-shadow: 4px 0 15px rgba(0,0,0,0.05); }
         .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; color: #0d0d0d; font-size: 14px; transition: background-color 0.2s; margin-bottom: 2px; }
         .sidebar-item:hover { background-color: #ececec; }
         .history-item { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: #4b5563; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .history-item:hover { background-color: #e5e7eb; }
+        .history-item.active-session { background-color: #e5e5e5; font-weight: 600; }
         .header-icon { color: #4d4d4d; cursor: pointer; font-size: 18px; padding: 8px; border-radius: 6px; transition: 0.2s; }
-        .get-plus-btn { background-color: #f4f0ff; color: #8e59ff; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; border: none; }
-        .input-wrapper { background-color: #f4f4f4; border-radius: 30px; display: flex; align-items: center; padding: 8px 12px; max-width: 750px; width: 100%; margin: 0 auto; box-shadow: 0 0 15px rgba(0,0,0,0.02); }
+        .get-plus-btn { background-color: #f4f0ff; color: #8e59ff; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; border: none; transition: 0.2s;}
+        .get-plus-btn:hover { background-color: #ebe4ff; transform: scale(1.02); }
+        .input-wrapper { background-color: #f4f4f4; border-radius: 30px; display: flex; align-items: center; padding: 8px 12px; max-width: 750px; width: 100%; margin: 0 auto; box-shadow: 0 0 15px rgba(0,0,0,0.02); transition: 0.3s;}
+        .input-wrapper:focus-within { background-color: #fff; border: 1px solid #e5e5e5; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
         .input-wrapper input { background: transparent; border: none; outline: none; flex-grow: 1; font-size: 16px; padding: 8px 12px; color: #0d0d0d; width: 100%; }
         .round-btn { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; background-color: #000; color: #fff; transition: 0.2s;}
         .icon-btn { color: #666; font-size: 18px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; }
-        .icon-btn.active { color: #8e59ff; background-color: #f4f0ff; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
-        .modal.active { display: flex; }
+        .icon-btn.active { color: #8e59ff; background-color: #f4f0ff; transform: scale(1.1); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.3s; }
+        .modal.active { display: flex; opacity: 1; }
+        .modal-content { transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .modal.active .modal-content { transform: scale(1); }
         .plan-card { transition: all 0.2s ease-in-out; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden">
+    
+    <div id="toast-container"></div>
+
     <div class="sidebar hidden md:flex p-3" id="sidebar">
         <div class="flex justify-between items-center mb-6 px-2 pt-2">
             <img src="/logo.png" alt="AuraGPT Logo" class="w-8 h-8 object-contain mix-blend-darken">
             <i class="fa-solid fa-xmark header-icon text-gray-500 md:hidden" onclick="toggleSidebar()"></i>
         </div>
-        <div class="sidebar-item font-medium border border-gray-200"><i class="fa-regular fa-pen-to-square" style="color:#000;"></i> New chat</div>
-        
+        <div class="sidebar-item font-medium border border-gray-200" onclick="startNewChat()">
+            <i class="fa-regular fa-pen-to-square" style="color:#000;"></i> New chat
+        </div>
         <div class="flex-grow overflow-y-auto mt-4 px-1 space-y-1" id="chatHistoryList">
             <p class="text-xs text-gray-400 font-bold px-2 mb-2 uppercase tracking-wider">Recent</p>
-            </div>
-
-        <div class="sidebar-item text-red-500 mt-auto" onclick="logout()"><i class="fa-solid fa-power-off"></i> Logout</div>
+        </div>
+        <div class="sidebar-item text-red-500 mt-auto hover:bg-red-50" onclick="logout()"><i class="fa-solid fa-power-off"></i> Logout</div>
     </div>
 
     <div class="flex-1 flex flex-col relative h-full bg-white w-full">
@@ -50,8 +70,8 @@
             <button class="get-plus-btn" onclick="openPaymentModal()"><i class="fa-solid fa-sparkles"></i> Get Plus</button>
         </header>
 
-        <div id="chatWindow" class="flex-1 flex flex-col items-center justify-start overflow-y-auto px-4 pt-10 pb-40 w-full">
-            <h1 id="welcomeText" class="text-[32px] font-normal text-[#0d0d0d] mb-12">Ready when you are.</h1>
+        <div id="chatWindow" class="flex-1 flex flex-col items-center justify-start overflow-y-auto px-4 pt-10 pb-40 w-full scroll-smooth">
+            <h1 id="welcomeText" class="text-[32px] font-normal text-[#0d0d0d] mb-12 animate-fade-up">Ready when you are.</h1>
             <div id="messages" class="w-full max-w-3xl flex flex-col gap-6"></div>
         </div>
 
@@ -76,68 +96,103 @@
     </div>
 
     <div id="paymentModal" class="modal">
-        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
-            <i class="fa-solid fa-xmark absolute top-4 right-4 text-xl cursor-pointer text-gray-500" onclick="closePaymentModal()"></i>
-            <h2 class="text-2xl font-bold mb-4 text-center">Upgrade to AuraGPT</h2>
-            
+        <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl relative modal-content">
+            <i class="fa-solid fa-xmark absolute top-4 right-4 text-xl cursor-pointer text-gray-500 hover:text-red-500 transition" onclick="closePaymentModal()"></i>
+            <h2 class="text-2xl font-bold mb-4 text-center text-gray-800">Upgrade to AuraGPT</h2>
             <div class="grid grid-cols-3 gap-2 mb-6 text-center">
-                <div id="plan-GO" onclick="selectPlan('GO')" class="plan-card border rounded-lg p-2 cursor-pointer hover:border-purple-500">
-                    <div class="font-bold">GO</div><div class="text-sm">50৳</div><div class="text-[10px] text-gray-500">5 Videos</div>
-                </div>
-                <div id="plan-PLUS" onclick="selectPlan('PLUS')" class="plan-card border rounded-lg p-2 cursor-pointer border-purple-500 bg-purple-50">
-                    <div class="font-bold text-purple-700">PLUS</div><div class="text-sm">200৳</div><div class="text-[10px] text-gray-500">20 Videos</div>
-                </div>
-                <div id="plan-PRO" onclick="selectPlan('PRO')" class="plan-card border rounded-lg p-2 cursor-pointer hover:border-purple-500">
-                    <div class="font-bold">PRO</div><div class="text-sm">500৳</div><div class="text-[10px] text-gray-500">Unlimited</div>
-                </div>
+                <div id="plan-GO" onclick="selectPlan('GO')" class="plan-card border rounded-lg p-2 cursor-pointer hover:border-purple-500"><div class="font-bold">GO</div><div class="text-sm">50৳</div><div class="text-[10px] text-gray-500">5 Videos</div></div>
+                <div id="plan-PLUS" onclick="selectPlan('PLUS')" class="plan-card border rounded-lg p-2 cursor-pointer border-purple-500 bg-purple-50"><div class="font-bold text-purple-700">PLUS</div><div class="text-sm">200৳</div><div class="text-[10px] text-gray-500">20 Videos</div></div>
+                <div id="plan-PRO" onclick="selectPlan('PRO')" class="plan-card border rounded-lg p-2 cursor-pointer hover:border-purple-500"><div class="font-bold">PRO</div><div class="text-sm">500৳</div><div class="text-[10px] text-gray-500">Unlimited</div></div>
             </div>
-
-            <div class="bg-gray-100 p-4 rounded-xl mb-4 text-center">
-                <p class="text-sm text-gray-600 mb-2">Send money via bKash / Nagad to:</p>
-                <span class="text-xl font-bold tracking-wider">+8801846849460</span>
-                <button onclick="navigator.clipboard.writeText('+8801846849460'); alert('Copied!')" class="bg-gray-300 px-3 py-1 rounded text-sm ml-2">Copy</button>
+            <div class="bg-gray-50 p-4 rounded-xl mb-4 text-center border border-gray-100">
+                <p class="text-sm text-gray-500 mb-2">Send money via bKash / Nagad to:</p>
+                <div class="flex items-center justify-center gap-2">
+                    <span class="text-xl font-bold tracking-wider text-gray-800">+8801846849460</span>
+                    <button onclick="copyNumber()" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-md text-sm transition"><i class="fa-regular fa-copy"></i></button>
+                </div>
             </div>
             <div class="space-y-3">
-                <input type="text" id="userPhone" placeholder="Your bKash/Nagad Number" class="w-full p-3 border rounded-lg outline-none focus:border-purple-500">
-                <input type="text" id="trxId" placeholder="Transaction ID (TrxID)" class="w-full p-3 border rounded-lg outline-none focus:border-purple-500">
-                <button onclick="submitPayment()" id="submitPayBtn" class="w-full bg-[#10a37f] text-white font-bold p-3 rounded-lg hover:bg-[#0d8c6d]">Submit for Review</button>
+                <input type="text" id="userPhone" placeholder="Your bKash/Nagad Number" class="w-full p-3 border rounded-xl outline-none focus:border-purple-500 transition">
+                <input type="text" id="trxId" placeholder="Transaction ID (TrxID)" class="w-full p-3 border rounded-xl outline-none focus:border-purple-500 transition">
+                <button onclick="submitPayment()" id="submitPayBtn" class="w-full bg-[#10a37f] text-white font-bold p-3 rounded-xl hover:bg-[#0d8c6d] transition shadow-md">Submit for Review</button>
             </div>
         </div>
     </div>
 
     <script>
+        // Custom Toast Function
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const icon = type === 'success' ? '<i class="fa-solid fa-check-circle"></i>' : '<i class="fa-solid fa-circle-exclamation"></i>';
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `${icon} ${message}`;
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function copyNumber() {
+            navigator.clipboard.writeText('+8801846849460');
+            showToast('Number copied to clipboard!', 'success');
+        }
+
         const userEmail = localStorage.getItem('auraUserEmail');
         if(!userEmail) window.location.href = '/';
 
-        let currentMode = 'chat';
-        let selectedPlan = 'PLUS'; // Default selected plan
+        let currentMode = 'chat', selectedPlan = 'PLUS', currentSessionId = null;
 
-        // Load History on Startup
-        async function loadHistory() {
+        async function loadHistorySidebar() {
             try {
-                const res = await fetch(`/api/history?email=${userEmail}`);
-                const historyList = await res.json();
+                const res = await fetch(`/api/history/sessions?email=${userEmail}`);
+                const sessions = await res.json();
                 const container = document.getElementById('chatHistoryList');
-                
-                if(historyList.length > 0) {
-                    historyList.forEach(item => {
+                container.innerHTML = '<p class="text-xs text-gray-400 font-bold px-2 mb-2 uppercase tracking-wider">Recent</p>';
+                if(sessions.length > 0) {
+                    sessions.forEach(item => {
                         const icon = item.type === 'video' ? 'fa-film' : (item.type === 'photo' ? 'fa-image' : 'fa-message');
-                        container.innerHTML += `<div class="history-item"><i class="fa-solid ${icon} mr-2 text-gray-400"></i>${item.prompt}</div>`;
+                        const activeClass = item.session_id === currentSessionId ? 'active-session' : '';
+                        container.innerHTML += `<div class="history-item ${activeClass}" onclick="loadChatSession('${item.session_id}')"><i class="fa-solid ${icon} mr-2 text-gray-400"></i>${item.title}</div>`;
                     });
-                } else {
-                    container.innerHTML += `<div class="text-xs text-gray-400 px-2">No history yet.</div>`;
                 }
-            } catch (e) { console.error("History load failed"); }
+            } catch (e) {}
         }
-        
-        window.onload = loadHistory;
+        window.onload = loadHistorySidebar;
+
+        function startNewChat() {
+            currentSessionId = null;
+            document.getElementById('messages').innerHTML = '';
+            document.getElementById('welcomeText').style.display = 'block';
+            loadHistorySidebar();
+            if(window.innerWidth < 768) toggleSidebar();
+        }
+
+        async function loadChatSession(sessionId) {
+            currentSessionId = sessionId;
+            document.getElementById('welcomeText').style.display = 'none';
+            document.getElementById('messages').innerHTML = '<div class="text-center text-gray-400 mt-10"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading...</div>';
+            try {
+                const res = await fetch(`/api/history/messages?session_id=${sessionId}`);
+                const messages = await res.json();
+                document.getElementById('messages').innerHTML = '';
+                messages.forEach(msg => {
+                    appendMessage('user', msg.prompt, null, false);
+                    appendMessage('ai', msg.reply, null, false);
+                });
+                loadHistorySidebar();
+                if(window.innerWidth < 768) toggleSidebar();
+            } catch (e) {}
+        }
 
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
         function openPaymentModal() { document.getElementById('paymentModal').classList.add('active'); }
         function closePaymentModal() { document.getElementById('paymentModal').classList.remove('active'); }
         function logout() { localStorage.removeItem('auraUserEmail'); window.location.href = '/'; }
 
-        // --- Plan Selection Logic ---
         function selectPlan(plan) {
             selectedPlan = plan;
             document.querySelectorAll('.plan-card').forEach(el => {
@@ -153,32 +208,25 @@
             currentMode = mode;
             document.querySelectorAll('.icon-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
-            const placeholder = mode === 'chat' ? "Ask anything (DeepSeek)..." : (mode === 'photo' ? "Describe photo..." : "Describe video (Runway)...");
-            document.getElementById('userInput').placeholder = placeholder;
+            document.getElementById('userInput').placeholder = mode === 'chat' ? "Ask anything (DeepSeek)..." : (mode === 'photo' ? "Describe photo..." : "Describe video (Runway)...");
         }
 
         function toggleSendIcon() {
             const inputVal = document.getElementById('userInput').value.trim();
-            const micBtn = document.getElementById('micBtn');
-            const sendBtn = document.getElementById('sendBtn');
+            const micBtn = document.getElementById('micBtn'), sendBtn = document.getElementById('sendBtn');
             if(inputVal.length > 0) { micBtn.classList.add('hidden'); sendBtn.classList.remove('hidden'); } 
             else { micBtn.classList.remove('hidden'); sendBtn.classList.add('hidden'); }
         }
 
         function startVoiceRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) return alert("Voice input not supported in this browser.");
+            if (!SpeechRecognition) return showToast("Voice input not supported in this browser.", 'error');
             const recognition = new SpeechRecognition();
             recognition.lang = 'en-US'; 
             const micIcon = document.querySelector('#micBtn i');
-            micIcon.classList.remove('fa-microphone'); micIcon.classList.add('fa-microphone-lines', 'text-red-500');
-            recognition.onresult = function(event) {
-                document.getElementById('userInput').value += event.results[0][0].transcript + " ";
-                toggleSendIcon();
-            };
-            recognition.onend = function() {
-                micIcon.classList.add('fa-microphone'); micIcon.classList.remove('fa-microphone-lines', 'text-red-500');
-            };
+            micIcon.classList.remove('fa-microphone'); micIcon.classList.add('fa-microphone-lines', 'text-red-500', 'fa-fade');
+            recognition.onresult = (e) => { document.getElementById('userInput').value += e.results[0][0].transcript + " "; toggleSendIcon(); };
+            recognition.onend = () => { micIcon.classList.add('fa-microphone'); micIcon.classList.remove('fa-microphone-lines', 'text-red-500', 'fa-fade'); };
             recognition.start();
         }
 
@@ -189,9 +237,8 @@
             document.getElementById('welcomeText').style.display = 'none';
             appendMessage('user', prompt);
             
-            // Add to sidebar instantly for good UX
             const icon = currentMode === 'video' ? 'fa-film' : (currentMode === 'photo' ? 'fa-image' : 'fa-message');
-            document.getElementById('chatHistoryList').insertAdjacentHTML('afterbegin', `<div class="history-item"><i class="fa-solid ${icon} mr-2 text-gray-400"></i>${prompt}</div>`);
+            document.getElementById('chatHistoryList').insertAdjacentHTML('afterbegin', `<div class="history-item animate-fade-up"><i class="fa-solid ${icon} mr-2 text-gray-400"></i>${prompt}</div>`);
             
             document.getElementById('userInput').value = '';
             toggleSendIcon();
@@ -202,46 +249,51 @@
             try {
                 const res = await fetch('/api/request', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ prompt, type: currentMode, userEmail })
+                    body: JSON.stringify({ prompt, type: currentMode, userEmail, sessionId: currentSessionId })
                 });
                 const data = await res.json();
+                if(data.sessionId) currentSessionId = data.sessionId; 
                 
-                if(data.reply) { document.getElementById(loadingId).innerText = data.reply; } 
-                else if(data.id) { document.getElementById(loadingId).innerHTML = `Generating video... (Task ID: ${data.id})`; }
+                // If API fails, show the exact error message
+                if(res.status !== 200) {
+                    document.getElementById(loadingId).innerHTML = `<span class="text-red-500"><i class="fa-solid fa-triangle-exclamation"></i> ${data.reply || data.error}</span>`;
+                } else if(data.reply) { 
+                    document.getElementById(loadingId).innerText = data.reply; 
+                } else if(data.id) { 
+                    document.getElementById(loadingId).innerHTML = `Generating video... (Task ID: ${data.id})`; 
+                }
+                loadHistorySidebar();
             } catch (e) { document.getElementById(loadingId).innerText = "Error: Connection failed."; }
         }
 
-        function appendMessage(role, content, id = null) {
+        function appendMessage(role, content, id = null, animate = true) {
             const div = document.createElement('div');
-            div.className = `w-full flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+            div.className = `w-full flex ${role === 'user' ? 'justify-end' : 'justify-start'} ${animate ? 'animate-fade-up' : ''}`;
             const bubble = document.createElement('div');
             if(id) bubble.id = id;
-            bubble.className = role === 'user' ? 'bg-[#f4f4f4] text-[#0d0d0d] px-5 py-3 rounded-3xl max-w-[70%]' : 'text-[#0d0d0d] py-3 max-w-[100%]';
+            bubble.className = role === 'user' ? 'bg-[#f4f4f4] text-[#0d0d0d] px-5 py-3 rounded-3xl max-w-[70%]' : 'text-[#0d0d0d] py-3 max-w-[100%] leading-relaxed';
             bubble.innerHTML = content;
             div.appendChild(bubble);
             document.getElementById('messages').appendChild(div);
             document.getElementById('chatWindow').scrollTop = document.getElementById('chatWindow').scrollHeight;
         }
 
-        document.getElementById("userInput").addEventListener("keypress", function(e) {
-            if (e.key === "Enter") { e.preventDefault(); processRequest(); }
-        });
+        document.getElementById("userInput").addEventListener("keypress", (e) => { if (e.key === "Enter") { e.preventDefault(); processRequest(); } });
 
         async function submitPayment() {
             const phone = document.getElementById('userPhone').value;
             const trxId = document.getElementById('trxId').value;
-            if(!phone || !trxId) return alert("Fill all details");
+            if(!phone || !trxId) return showToast("Fill all details", 'error');
             
             document.getElementById('submitPayBtn').innerText = "Submitting...";
             const res = await fetch('/api/submit-payment', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
-                // আমরা এখন সিলেক্ট করা প্ল্যানটিও পাঠাচ্ছি
                 body: JSON.stringify({ userEmail, phone, trxId, plan: selectedPlan }) 
             });
             if(res.ok) {
-                alert(`Request for ${selectedPlan} plan sent to Admin!`); 
+                showToast(`Request for ${selectedPlan} sent to Admin!`, 'success'); 
                 closePaymentModal();
-            } else { alert("Failed. TrxID might exist."); }
+            } else { showToast("Failed. TrxID might exist.", 'error'); }
             document.getElementById('submitPayBtn').innerText = "Submit for Review";
         }
     </script>
