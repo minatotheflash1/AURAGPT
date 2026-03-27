@@ -9,7 +9,7 @@ const crypto = require('crypto');
 
 dotenv.config();
 const app = express();
-app.use(express.json({ limit: '50mb' })); // ফাইল আপলোডের জন্য লিমিট
+app.use(express.json({ limit: '50mb' })); // Base64 ছবির জন্য লিমিট বাড়ানো আছে
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -143,7 +143,7 @@ app.post('/api/request', async (req, res) => {
 
         if (user.plan === 'FREE' && user.badge === 'FREE' && user.msg_count >= 100) return res.status(403).json({ reply: "Free limit reached. Wait 2 days or upgrade." });
         
-        // 1. TEXT CHAT (DeepSeek)
+        // --- 1. TEXT CHAT (DeepSeek) ---
         if (type === 'chat') {
             const creatorInfo = `Identity: Your creator is Ononto Hasan from Mymensingh. He is a Computer Trainer, Designer, Developer, and Teacher at BRAC SDF IST Dept. He owns the FB page "Toxic naaa?" with 64k+ followers. You are AuraGPT. If asked about your creator, give a proud summary. Be professional but helpful.`;
 
@@ -169,25 +169,47 @@ app.post('/api/request', async (req, res) => {
             res.json({ reply, sessionId }); 
         } 
         
-        // 2. PHOTO GENERATION (Pollinations.ai - Free)
+        // --- 2. PHOTO GENERATION (Hugging Face API) ---
         else if (type === 'photo') {
-            const safePrompt = encodeURIComponent(prompt);
-            const imageUrl = `https://image.pollinations.ai/prompt/${safePrompt}?width=1024&height=1024&nologo=true`;
-            const reply = `Here is your generated image:\n\n![${prompt}](${imageUrl})`;
-            
-            if(user.plan !== 'PRO' && !['Owner', 'Admin'].includes(user.badge)) {
-                await pool.query(`UPDATE users SET msg_count = msg_count + 1 WHERE email = $1`, [userEmail]);
+            try {
+                // Hugging Face API Call
+                const hfRes = await axios.post(
+                    'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
+                    { inputs: prompt },
+                    { 
+                        headers: { 
+                            'Authorization': `Bearer ${process.env.HF_API_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        responseType: 'arraybuffer' // সার্ভারেই ছবি ডাউনলোড করে নেওয়া হচ্ছে
+                    }
+                );
+                
+                // ছবিকে Base64 এ কনভার্ট করে ফ্রন্টএন্ডে পাঠানো হচ্ছে
+                const base64Image = Buffer.from(hfRes.data, 'binary').toString('base64');
+                const imageUrl = `data:image/jpeg;base64,${base64Image}`;
+                
+                const reply = `Here is your generated image:\n\n<img src="${imageUrl}" alt="Generated Image" style="border-radius: 12px; margin-top: 10px; max-width: 100%; height: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />`;
+                
+                if(user.plan !== 'PRO' && !['Owner', 'Admin'].includes(user.badge)) {
+                    await pool.query(`UPDATE users SET msg_count = msg_count + 1 WHERE email = $1`, [userEmail]);
+                }
+                
+                await pool.query(`INSERT INTO chat_history (session_id, user_email, type, prompt, reply) VALUES ($1, $2, $3, $4, $5)`, [sessionId, userEmail, type, prompt, reply]);
+                
+                res.json({ reply, sessionId });
+            } catch (imgErr) {
+                console.error("Image API Error:", imgErr.message);
+                res.status(500).json({ reply: "Image Generation Failed. Please check HF_API_KEY or try again." });
             }
-            await pool.query(`INSERT INTO chat_history (session_id, user_email, type, prompt, reply) VALUES ($1, $2, $3, $4, $5)`, [sessionId, userEmail, type, prompt, reply]);
-            
-            res.json({ reply, sessionId });
         }
 
-        // 3. VIDEO GENERATION (Replicate)
+        // --- 3. VIDEO GENERATION (Replicate) ---
         else if (type === 'video') {
             if (user.plan === 'FREE' && user.badge === 'FREE') return res.status(403).json({ reply: "Video generation requires at least AURAGPT GO." });
             
             try {
+                // Replicate API using text-to-video endpoint
                 const repRes = await axios.post('https://api.replicate.com/v1/models/cjwbw/damo-text-to-video/predictions', {
                     input: {
                         prompt: prompt,
