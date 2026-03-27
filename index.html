@@ -8,158 +8,204 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; color: #0d0d0d; margin: 0; padding: 0; }
-        .sidebar { background-color: #f9f9f9; width: 260px; height: 100vh; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid #e5e5e5; }
+        .sidebar { background-color: #f9f9f9; width: 260px; height: 100vh; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid #e5e5e5; transition: transform 0.3s ease; }
+        .sidebar.active { display: flex !important; position: absolute; z-index: 50; box-shadow: 4px 0 15px rgba(0,0,0,0.05); }
         .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; color: #0d0d0d; font-size: 14px; transition: background-color 0.2s; margin-bottom: 2px; }
         .sidebar-item:hover { background-color: #ececec; }
-        .sidebar-item i { width: 20px; text-align: center; color: #4d4d4d; font-size: 16px; }
         .header-icon { color: #4d4d4d; cursor: pointer; font-size: 18px; padding: 8px; border-radius: 6px; transition: 0.2s; }
         .header-icon:hover { background-color: #f3f3f3; }
         .get-plus-btn { background-color: #f4f0ff; color: #8e59ff; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; border: none; transition: 0.2s; }
         .get-plus-btn:hover { background-color: #ebe4ff; }
         .input-wrapper { background-color: #f4f4f4; border-radius: 30px; display: flex; align-items: center; padding: 8px 12px; max-width: 750px; width: 100%; margin: 0 auto; box-shadow: 0 0 15px rgba(0,0,0,0.02); }
         .input-wrapper input { background: transparent; border: none; outline: none; flex-grow: 1; font-size: 16px; padding: 8px 12px; color: #0d0d0d; }
-        .input-wrapper input::placeholder { color: #8e8e8e; }
         .round-btn { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .send-btn { background-color: #000; color: #fff; }
-        .icon-btn { color: #4d4d4d; font-size: 18px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        .icon-btn { color: #666; font-size: 18px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        .icon-btn.active { color: #8e59ff; background-color: #f4f0ff; }
         .icon-btn:hover { background-color: #e5e5e5; }
-        #chatWindow::-webkit-scrollbar { width: 6px; }
-        #chatWindow::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+        
+        /* Modal Styles */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden">
 
-    <div class="sidebar hidden md:flex p-3">
+    <div class="sidebar hidden md:flex p-3" id="sidebar">
         <div class="flex justify-between items-center mb-6 px-2 pt-2">
             <div class="flex items-center gap-2">
                 <img src="/logo.png" alt="AuraGPT Logo" class="w-8 h-8 object-contain mix-blend-darken">
             </div>
-            <i class="fa-solid fa-bars-staggered header-icon text-gray-500"></i>
+            <i class="fa-solid fa-xmark header-icon text-gray-500 md:hidden" onclick="toggleSidebar()"></i>
         </div>
-
         <div class="flex-grow flex flex-col mt-2">
             <div class="sidebar-item font-medium"><i class="fa-regular fa-pen-to-square" style="color:#000;"></i> New chat</div>
-            <div class="mt-4">
-                <div class="sidebar-item"><i class="fa-solid fa-magnifying-glass"></i> Search chats</div>
-                <div class="sidebar-item"><i class="fa-regular fa-image"></i> Images</div>
-                <div class="sidebar-item"><i class="fa-solid fa-table-cells-large"></i> Apps</div>
-                <div class="sidebar-item"><i class="fa-solid fa-microscope"></i> Deep research</div>
-                <div class="sidebar-item"><i class="fa-solid fa-code"></i> Codex</div>
-                <div class="sidebar-item"><i class="fa-regular fa-folder-open"></i> Projects</div>
-            </div>
-        </div>
-
-        <div class="mt-auto pt-4 text-[13px] text-gray-500 font-medium px-3 pb-2">
-            Your chats
+            <div class="mt-4" id="chatHistoryList">
+                </div>
         </div>
     </div>
 
-    <div class="flex-1 flex flex-col relative h-full bg-white">
-        
+    <div class="flex-1 flex flex-col relative h-full bg-white w-full">
         <header class="flex justify-between items-center px-4 py-3">
-            <div class="flex items-center gap-2 cursor-pointer text-[17px] font-semibold text-gray-800 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition">
-                AURAGPT <i class="fa-solid fa-chevron-down text-[12px] text-gray-500"></i>
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-bars-staggered header-icon text-gray-500" onclick="toggleSidebar()"></i>
+                <div class="cursor-pointer text-[17px] font-semibold text-gray-800 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition">
+                    AURAGPT
+                </div>
             </div>
-            
             <div class="flex items-center gap-3">
-                <button class="get-plus-btn">
+                <button class="get-plus-btn" onclick="openPaymentModal()">
                     <i class="fa-solid fa-sparkles"></i> Get Plus
                 </button>
-                <i class="fa-solid fa-user-plus header-icon"></i>
-                <i class="fa-solid fa-rotate-right header-icon"></i>
             </div>
         </header>
 
-        <div id="chatWindow" class="flex-1 flex flex-col items-center justify-start overflow-y-auto px-4 pt-20 pb-40 w-full">
+        <div id="chatWindow" class="flex-1 flex flex-col items-center justify-start overflow-y-auto px-4 pt-10 pb-40 w-full">
             <h1 id="welcomeText" class="text-[32px] font-normal text-[#0d0d0d] mb-12">Ready when you are.</h1>
             <div id="messages" class="w-full max-w-3xl flex flex-col gap-6"></div>
         </div>
 
         <div class="absolute bottom-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 px-4">
             <div class="input-wrapper">
-                <div class="icon-btn"><i class="fa-solid fa-plus text-[20px]"></i></div>
-                <input type="text" id="userInput" placeholder="Ask anything">
+                <div class="flex gap-1 pr-2 border-r border-gray-300">
+                    <div class="icon-btn" id="modeChat" onclick="setMode('chat')" title="Normal Chat"><i class="fa-solid fa-message"></i></div>
+                    <div class="icon-btn" id="modePhoto" onclick="setMode('photo')" title="Generate Photo"><i class="fa-solid fa-image"></i></div>
+                    <div class="icon-btn" id="modeVideo" onclick="setMode('video')" title="Generate Video"><i class="fa-solid fa-film"></i></div>
+                </div>
+                <input type="text" id="userInput" placeholder="Ask anything (DeepSeek) or Describe Video (Runway)..." class="ml-2">
                 <div class="flex items-center gap-2 pr-1">
-                    <div class="icon-btn"><i class="fa-solid fa-microphone text-[18px]"></i></div>
-                    <div onclick="generateVideo()" class="round-btn send-btn hover:bg-gray-800 transition">
+                    <div onclick="processRequest()" class="round-btn send-btn hover:bg-gray-800 transition">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5v14M7 5v14M22 9v6M2 9v6"/></svg>
                     </div>
                 </div>
             </div>
+            <div class="text-center text-xs text-gray-500 mt-2">Free Limit: <span id="msgCount">0</span>/100 messages used.</div>
+        </div>
+    </div>
+
+    <div id="paymentModal" class="modal">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+            <i class="fa-solid fa-xmark absolute top-4 right-4 text-xl cursor-pointer text-gray-500" onclick="closePaymentModal()"></i>
+            <h2 class="text-2xl font-bold mb-4 text-center">Upgrade to AuraGPT</h2>
+            
+            <div class="grid grid-cols-3 gap-2 mb-6 text-center">
+                <div class="border rounded-lg p-2 cursor-pointer hover:border-purple-500">
+                    <div class="font-bold">GO</div>
+                    <div class="text-sm">50৳</div>
+                    <div class="text-[10px] text-gray-500">5 Videos</div>
+                </div>
+                <div class="border rounded-lg p-2 cursor-pointer border-purple-500 bg-purple-50">
+                    <div class="font-bold text-purple-700">PLUS</div>
+                    <div class="text-sm">200৳</div>
+                    <div class="text-[10px] text-gray-500">20 Videos</div>
+                </div>
+                <div class="border rounded-lg p-2 cursor-pointer hover:border-purple-500">
+                    <div class="font-bold">PRO</div>
+                    <div class="text-sm">500৳</div>
+                    <div class="text-[10px] text-gray-500">Unlimited</div>
+                </div>
+            </div>
+
+            <div class="bg-gray-100 p-4 rounded-xl mb-4 text-center">
+                <p class="text-sm text-gray-600 mb-2">Send money via bKash / Nagad to:</p>
+                <div class="flex items-center justify-center gap-3">
+                    <span class="text-xl font-bold tracking-wider" id="paymentNumber">+8801846849460</span>
+                    <button onclick="copyNumber()" class="bg-gray-300 hover:bg-gray-400 px-3 py-1 rounded text-sm transition">Copy</button>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <input type="text" id="userPhone" placeholder="Your Number (e.g. 018...)" class="w-full p-3 border rounded-lg outline-none focus:border-purple-500">
+                <input type="text" id="trxId" placeholder="Transaction ID (TrxID)" class="w-full p-3 border rounded-lg outline-none focus:border-purple-500">
+                <button onclick="submitPayment()" class="w-full bg-[#10a37f] text-white font-bold p-3 rounded-lg hover:bg-[#0d8c6d] transition">Submit for Review</button>
+            </div>
+            <p class="text-xs text-center text-gray-400 mt-3">Admin will verify and upgrade your account shortly.</p>
         </div>
     </div>
 
     <script>
-        const chatWindow = document.getElementById('chatWindow');
-        const welcomeText = document.getElementById('welcomeText');
-        const messages = document.getElementById('messages');
-        const userInput = document.getElementById('userInput');
+        let currentMode = 'chat'; // 'chat', 'photo', 'video'
+        
+        // UI Toggles
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
+        function openPaymentModal() { document.getElementById('paymentModal').classList.add('active'); }
+        function closePaymentModal() { document.getElementById('paymentModal').classList.remove('active'); }
+        
+        function copyNumber() {
+            navigator.clipboard.writeText('+8801846849460');
+            alert('Number copied!');
+        }
 
-        async function generateVideo() {
-            const prompt = userInput.value;
+        // Mode Selection (DeepSeek vs Runway)
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.icon-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+            
+            const input = document.getElementById('userInput');
+            if(mode === 'chat') input.placeholder = "Ask anything (DeepSeek)...";
+            else if(mode === 'photo') input.placeholder = "Describe photo to generate...";
+            else if(mode === 'video') input.placeholder = "Describe video to generate (Runway)...";
+        }
+
+        // Init mode
+        setMode('chat');
+
+        async function processRequest() {
+            const prompt = document.getElementById('userInput').value;
             if(!prompt) return;
 
-            welcomeText.style.display = 'none';
+            document.getElementById('welcomeText').style.display = 'none';
             appendMessage('user', prompt);
-            userInput.value = '';
+            document.getElementById('userInput').value = '';
 
             const loadingId = "loader-" + Date.now();
             appendMessage('ai', "Thinking...", loadingId);
 
             try {
-                const res = await fetch('/api/generate', {
+                // Backend will handle the routing based on 'currentMode'
+                const res = await fetch('/api/request', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ prompt })
+                    body: JSON.stringify({ prompt, type: currentMode })
                 });
-                const task = await res.json();
                 
-                if(task.id) {
-                    document.getElementById(loadingId).innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Generating your video...`;
-                    pollStatus(task.id, loadingId);
+                const data = await res.json();
+                
+                if(currentMode === 'chat') {
+                    document.getElementById(loadingId).innerHTML = data.reply;
+                } else if(currentMode === 'video' && data.id) {
+                    document.getElementById(loadingId).innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Generating video...`;
+                    pollStatus(data.id, loadingId);
                 }
             } catch (e) {
-                document.getElementById(loadingId).innerText = "Error: API Connection failed.";
+                document.getElementById(loadingId).innerText = "Error: Connection failed.";
             }
         }
 
         function appendMessage(role, content, id = null) {
             const div = document.createElement('div');
             div.className = `w-full flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
-            
             const bubble = document.createElement('div');
             if(id) bubble.id = id;
             bubble.className = role === 'user' 
                 ? 'bg-[#f4f4f4] text-[#0d0d0d] px-5 py-3 rounded-3xl max-w-[70%] text-[16px]' 
                 : 'text-[#0d0d0d] py-3 max-w-[100%] text-[16px] leading-relaxed';
-            
             bubble.innerHTML = content;
             div.appendChild(bubble);
-            messages.appendChild(div);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-            return bubble;
+            document.getElementById('messages').appendChild(div);
+            document.getElementById('chatWindow').scrollTop = document.getElementById('chatWindow').scrollHeight;
         }
 
-        async function pollStatus(taskId, loadingId) {
-            const interval = setInterval(async () => {
-                const res = await fetch(`/api/status/${taskId}`);
-                const data = await res.json();
-
-                if(data.status === 'SUCCEEDED') {
-                    clearInterval(interval);
-                    document.getElementById(loadingId).innerHTML = `
-                        <video src="${data.output[0]}" controls autoplay loop class="rounded-xl w-full max-w-2xl shadow-md border border-gray-200 mt-2"></video>
-                    `;
-                } else if(data.status === 'FAILED') {
-                    clearInterval(interval);
-                    document.getElementById(loadingId).innerText = "Failed to generate video.";
-                }
-            }, 5000);
+        async function submitPayment() {
+            const phone = document.getElementById('userPhone').value;
+            const trxId = document.getElementById('trxId').value;
+            if(!phone || !trxId) return alert("Please fill all details");
+            
+            // In future, this sends data to Postgres via backend
+            alert("Payment details sent to Admin! Wait for approval.");
+            closePaymentModal();
         }
-
-        userInput.addEventListener("keypress", (e) => {
-            if (e.key === "Enter") generateVideo();
-        });
     </script>
 </body>
 </html>
