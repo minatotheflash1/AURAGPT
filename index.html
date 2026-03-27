@@ -445,7 +445,7 @@
             return html;
         }
 
-        // --- Text to Speech Logic (NEW) ---
+        // --- Smart Language Text to Speech Logic ---
         function stripMarkdownForSpeech(md) {
             return md.replace(/[#*_~`>]/g, '') // Remove markdown symbols
                      .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Extract text from links
@@ -470,7 +470,20 @@
             const cleanText = stripMarkdownForSpeech(rawText);
             const utterance = new SpeechSynthesisUtterance(cleanText);
 
-            // Browser will auto-detect the language and speak flawlessly
+            // --- Language Detection Logic ---
+            // এটি চেক করবে টেক্সটে বাংলা বা হিন্দি অক্ষর আছে কি না
+            const bengaliRegex = /[\u0980-\u09FF]/;
+            const hindiRegex = /[\u0900-\u097F]/;
+            
+            if (bengaliRegex.test(cleanText)) {
+                utterance.lang = 'bn-BD'; // বাংলা (বাংলাদেশ)
+            } else if (hindiRegex.test(cleanText)) {
+                utterance.lang = 'hi-IN'; // হিন্দি (ভারত)
+            } else {
+                utterance.lang = 'en-US'; // ডিফল্ট ইংলিশ
+            }
+            // --------------------------------
+
             utterance.onend = () => {
                 icon.className = 'fa-solid fa-volume-high';
             };
