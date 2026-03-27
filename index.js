@@ -74,6 +74,16 @@ app.post('/api/login', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Server error" }); }
 });
 
+// --- NEW: Get User Status for Sidebar ---
+app.get('/api/user/status', async (req, res) => {
+    const { email } = req.query;
+    try {
+        const result = await pool.query('SELECT name, plan, msg_count, video_count FROM users WHERE email = $1', [email]);
+        if(result.rows.length > 0) res.json(result.rows[0]);
+        else res.status(404).json({ error: "User not found" });
+    } catch (e) { res.status(500).json({ error: "Server error" }); }
+});
+
 app.get('/api/history/sessions', async (req, res) => {
     const { email } = req.query;
     try {
@@ -91,13 +101,18 @@ app.get('/api/history/messages', async (req, res) => {
 });
 
 app.post('/api/request', async (req, res) => {
-    let { prompt, type, userEmail, sessionId } = req.body;
+    let { prompt, type, userEmail, sessionId, modelChoice } = req.body;
     if (!sessionId) sessionId = crypto.randomUUID();
 
     try {
         const userQuery = await pool.query(`SELECT * FROM users WHERE email = $1`, [userEmail]);
         const user = userQuery.rows[0];
         if(!user) return res.status(404).json({ error: "User not found" });
+
+        // Pro Model Restriction Check
+        if (modelChoice === 'pro' && !['PLUS', 'PRO'].includes(user.plan)) {
+            return res.status(403).json({ reply: "✨ Pro model requires PLUS or PRO plan. Please upgrade your account." });
+        }
 
         if (new Date() > new Date(user.limit_reset_date)) {
             await pool.query(`UPDATE users SET msg_count = 0, limit_reset_date = NOW() + INTERVAL '2 days' WHERE email = $1`, [userEmail]);
@@ -106,9 +121,17 @@ app.post('/api/request', async (req, res) => {
 
         if (user.plan === 'FREE' && user.msg_count >= 100) return res.status(403).json({ reply: "Free limit reached. Wait 2 days or upgrade." });
         
-        // --- TEXT / PHOTO (DEEPSEEK) ---
+        // --- TEXT / PHOTO ---
         if (type === 'chat' || type === 'photo') {
             const previousMessages = [];
+            
+            // System Prompt settings based on Model Choice
+            if (modelChoice === 'pro') {
+                previousMessages.push({ role: "system", content: "You are AuraGPT Pro, an advanced expert AI. Provide highly detailed, professional, and comprehensive answers." });
+            } else {
+                previousMessages.push({ role: "system", content: "You are AuraGPT, a helpful AI assistant." });
+            }
+
             const historyQuery = await pool.query(`SELECT prompt, reply FROM chat_history WHERE session_id = $1 ORDER BY created_at ASC`, [sessionId]);
             historyQuery.rows.forEach(row => {
                 previousMessages.push({ role: "user", content: row.prompt });
@@ -116,8 +139,12 @@ app.post('/api/request', async (req, res) => {
             });
             previousMessages.push({ role: "user", content: prompt });
 
+            // Select actual DeepSeek API model based on user choice
+            let actualDeepseekModel = "deepseek-chat";
+            if (modelChoice === 'think') actualDeepseekModel = "deepseek-reasoner";
+
             const dsRes = await axios.post('https://api.deepseek.com/v1/chat/completions', {
-                model: "deepseek-chat", messages: previousMessages
+                model: actualDeepseekModel, messages: previousMessages
             }, { headers: { 'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}` }});
             
             const reply = dsRes.data.choices[0].message.content;
@@ -128,19 +155,20 @@ app.post('/api/request', async (req, res) => {
         // --- VIDEO (RUNWAY) ---
         else if (type === 'video') {
             if (user.plan === 'FREE') return res.status(403).json({ reply: "Video generation requires at least AURAGPT GO." });
-            
+            if (user.plan === 'GO' && user.video_count >= 5) return res.status(403).json({ reply: "GO limit (5 videos) reached. Please upgrade." });
+            if (user.plan === 'PLUS' && user.video_count >= 20) return res.status(403).json({ reply: "PLUS limit (20 videos) reached. Please upgrade." });
+
             try {
                 const rwRes = await axios.post('https://api.runwayml.com/v1/image_to_video', {
-                    model: "gen3a_turbo", promptText: prompt // Note: Using promptText
+                    model: "gen3a_turbo", promptText: prompt 
                 }, { headers: { 'Authorization': `Bearer ${process.env.RUNWAY_API_KEY}`, 'X-Runway-Version': '2024-11-06' }});
                 
                 if(user.plan !== 'PRO') await pool.query(`UPDATE users SET video_count = video_count + 1 WHERE email = $1`, [userEmail]);
                 await pool.query(`INSERT INTO chat_history (session_id, user_email, type, prompt, reply) VALUES ($1, $2, $3, $4, $5)`, [sessionId, userEmail, type, prompt, "Video Task ID: " + rwRes.data.id]);
                 res.json({ ...rwRes.data, sessionId });
             } catch (runwayErr) {
-                console.error("Runway API Error details:", runwayErr.response?.data || runwayErr.message);
                 const errMsg = runwayErr.response?.data?.error || runwayErr.message;
-                return res.status(500).json({ reply: `Runway Error: ${errMsg}` }); // স্ক্রিনে আসল এরর দেখাবে
+                return res.status(500).json({ reply: `Runway Error: ${errMsg}` }); 
             }
         }
     } catch (error) { res.status(500).json({ reply: "Server processing failed. Please try again." }); }
