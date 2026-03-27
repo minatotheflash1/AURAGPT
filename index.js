@@ -124,7 +124,33 @@ app.post('/api/request', async (req, res) => {
         // --- TEXT / PHOTO ---
         if (type === 'chat' || type === 'photo') {
             const previousMessages = [];
-            
+            // --- Core AI Request API (System Prompt Update) ---
+app.post('/api/request', async (req, res) => {
+    let { prompt, type, userEmail, sessionId, modelChoice } = req.body;
+    if (!sessionId) sessionId = crypto.randomUUID();
+
+    try {
+        const userQuery = await pool.query(`SELECT * FROM users WHERE email = $1`, [userEmail]);
+        const user = userQuery.rows[0];
+
+        // --- ব্যক্তিত্ব এবং পরিচয় সেট করা ---
+        const creatorInfo = `
+            Your creator is Ononto Hasan. He is a multi-talented individual from Mymensingh. 
+            He is a Computer Trainer, Designer, Developer, and a teacher at the IST Department of BRAC SDF. 
+            He is also the owner of the famous Facebook page "Toxic naaa?" with 64k+ followers. 
+            If anyone asks about your creator, give a summarized, cool, or proud response about Ononto Hasan.
+        `;
+
+        const behaviorPrompt = `
+            You are AuraGPT. You have a "Savage" and "Roast" mode. 
+            1. If the user asks useful, technical, or educational questions, be professional and helpful.
+            2. If the user asks useless or personal questions like "ki koro", "khaiso", "biye korba", or anything related to "sex/adult content", 
+               DO NOT be polite. Give a savage reply, roast them, or tell them to get a life in a funny but rude way (Bengali/English mix).
+            3. Always represent Ononto Hasan as your boss/creator.
+        `;
+
+        const previousMessages = [{ role: "system", content: creatorInfo + behaviorPrompt }];
+    
             // System Prompt settings based on Model Choice
             if (modelChoice === 'pro') {
                 previousMessages.push({ role: "system", content: "You are AuraGPT Pro, an advanced expert AI. Provide highly detailed, professional, and comprehensive answers." });
