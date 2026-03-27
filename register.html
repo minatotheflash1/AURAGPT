@@ -4,83 +4,83 @@
     <meta charset="UTF-8">
     <title>Register - AuraGPT</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .input-field { width: 100%; padding: 12px; border: 1px solid #c2c8d0; border-radius: 6px; margin-bottom: 12px; outline: none; }
-        .input-field:focus { border-color: #10a37f; }
-        .btn-primary { width: 100%; background-color: #10a37f; color: white; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        .btn-primary:disabled { background-color: #ccc; cursor: not-allowed; }
+        .input-field { width: 100%; padding: 12px; border: 1px solid #c2c8d0; border-radius: 6px; margin-bottom: 12px; outline: none; transition: 0.2s;}
+        .input-field:focus { border-color: #10a37f; box-shadow: 0 0 0 2px rgba(16,163,127,0.1); }
+        .btn-primary { width: 100%; background-color: #10a37f; color: white; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s;}
+        .btn-primary:hover { background-color: #0d8c6d; }
+        
+        /* Toast Popup Styles */
+        #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: #333; color: #fff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); display: flex; align-items: center; gap: 8px; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background: #10a37f; }
+        .toast.error { background: #ef4444; }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen bg-white">
-    <div class="w-full max-w-[400px] px-8 py-10">
-        <div class="text-center mb-6">
-            <img src="/logo.png" alt="AuraGPT" class="w-12 h-12 mx-auto mix-blend-darken">
-            <h1 class="text-2xl font-bold mt-4">Create your account</h1>
-        </div>
+<body class="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+    <div id="toast-container"></div>
 
+    <div class="w-full max-w-[400px] px-8 py-10 bg-white shadow-xl rounded-2xl">
+        <div class="text-center mb-6">
+            <img src="/logo.png" alt="Logo" class="w-14 h-14 mx-auto mix-blend-darken mb-2">
+            <h1 class="text-2xl font-bold text-gray-800">Create your account</h1>
+        </div>
         <div id="step1">
             <input type="text" id="name" class="input-field" placeholder="Full Name">
             <input type="email" id="email" class="input-field" placeholder="Email address">
             <input type="text" id="phone" class="input-field" placeholder="Phone Number (+880...)">
-            <input type="date" id="dob" class="input-field" title="Date of Birth">
+            <input type="date" id="dob" class="input-field text-gray-500">
             <input type="password" id="password" class="input-field" placeholder="Create Password">
             <button onclick="sendOTP()" class="btn-primary mt-2" id="sendOtpBtn">Send Verification Code</button>
-            <div class="text-center mt-4 text-sm"><a href="/" class="text-[#10a37f]">Already have an account? Log in</a></div>
+            <div class="text-center mt-5 text-sm"><a href="/" class="text-[#10a37f] hover:underline font-medium">Already have an account? Log in</a></div>
         </div>
-
-        <div id="step2" class="hidden">
-            <p class="text-sm text-gray-600 mb-4 text-center">We sent a code to your email from AURAGPT.</p>
-            <input type="text" id="otpCode" class="input-field text-center tracking-widest text-lg" placeholder="Enter 6-digit code" maxlength="6">
+        <div id="step2" class="hidden text-center">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-500 text-2xl"><i class="fa-regular fa-envelope-open"></i></div>
+            <p class="text-sm text-gray-600 mb-6">We sent a 6-digit code to your email.</p>
+            <input type="text" id="otpCode" class="input-field text-center tracking-[0.5em] text-xl font-bold" placeholder="------" maxlength="6">
             <button onclick="verifyAndRegister()" class="btn-primary">Verify & Register</button>
         </div>
     </div>
-
     <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = (type === 'success' ? '<i class="fa-solid fa-check-circle"></i> ' : '<i class="fa-solid fa-circle-exclamation"></i> ') + message;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
         async function sendOTP() {
             const email = document.getElementById('email').value;
-            if(!email) return alert("Email is required!");
-            
+            if(!email) return showToast("Email is required!", 'error');
             document.getElementById('sendOtpBtn').innerText = "Sending...";
-            document.getElementById('sendOtpBtn').disabled = true;
-
-            const res = await fetch('/api/send-otp', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email })
-            });
-
+            const res = await fetch('/api/send-otp', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email }) });
             if(res.ok) {
                 document.getElementById('step1').classList.add('hidden');
                 document.getElementById('step2').classList.remove('hidden');
             } else {
-                alert("Error sending OTP");
-                document.getElementById('sendOtpBtn').disabled = false;
+                showToast("Error sending OTP", 'error');
                 document.getElementById('sendOtpBtn').innerText = "Send Verification Code";
             }
         }
-
+        
         async function verifyAndRegister() {
             const data = {
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                phone: document.getElementById('phone').value,
-                dob: document.getElementById('dob').value,
-                password: document.getElementById('password').value,
-                otp: document.getElementById('otpCode').value
+                name: document.getElementById('name').value, email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value, dob: document.getElementById('dob').value,
+                password: document.getElementById('password').value, otp: document.getElementById('otpCode').value
             };
-
-            const res = await fetch('/api/register', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-
+            const res = await fetch('/api/register', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
             if(res.ok) {
-                alert("Registration Successful! Please login.");
-                window.location.href = "/";
+                showToast("Registration Successful! Redirecting to login...", 'success');
+                setTimeout(() => window.location.href = "/", 2000); // ২ সেকেন্ড পর রিডাইরেক্ট হবে
             } else {
                 const err = await res.json();
-                alert(err.error || "Invalid OTP");
+                showToast(err.error || "Invalid OTP", 'error');
             }
         }
     </script>
