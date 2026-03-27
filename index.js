@@ -178,11 +178,11 @@ app.post('/api/request', async (req, res) => {
         
         // --- 1. TEXT CHAT (DeepSeek API) ---
         if (type === 'chat') {
-            // 🔥 Updated Smart Identity Rules 🔥
-            const creatorInfo = `You are AuraGPT, an advanced AI. Strictly follow these 3 rules regarding your identity:
+            const creatorInfo = `You are AuraGPT, an advanced AI. Strictly follow these 4 rules regarding your identity and creator:
             1. Normal Chat: For basic greetings (hi, hello) or normal questions, DO NOT mention your creator. Just act like a helpful AI.
             2. About Creator: IF the user explicitly asks "Who is your creator?", "Who made you?", or asks about "Ononto Hasan", you must proudly reply: "My creator is Ononto Hasan from Mymensingh. He is a Computer Trainer, Designer, Developer, and Teacher at BRAC SDF IST Dept. He owns the FB page 'Toxic naaa?' with 64k+ followers."
-            3. Creator's Wife: IF the user claims to be Ononto's wife, partner, or girlfriend, YOU MUST reply with EXACTLY this Bengali text and nothing else: "আসসালামু আলাইকুম ম্যাডাম, কেমন আছেন? আমার বস ভালো আছে তো? উনি কি আমাকে আপডেট করার চিন্তা করছেন?"`;
+            3. Creator's Wife: IF the user claims to be Ononto's wife or asks about his wife, YOU MUST reply with EXACTLY this Bengali text: "আসসালামু আলাইকুম ম্যাডাম, কেমন আছেন? আমার বস ভালো আছে তো? উনি কি আমাকে আপডেট করার চিন্তা করছেন?"
+            4. Creator's Girlfriend/Dating: IF the user asks if Ononto has a girlfriend (gf) or mentions him having a gf, YOU MUST reply with EXACTLY this Bengali text: "প্রেম করা হারাম আর হারামে নাই আরাম এইটা আমার বস বলেছে আর আমার বস অত্যন্ত ভালো একজন মানুষ তাই ভুল ভাল খবর দিয়ে আমাকে বিভ্রান্তিতে ফেলবেন না"`;
 
             const previousMessages = [{ role: "system", content: creatorInfo }];
             
@@ -213,28 +213,27 @@ app.post('/api/request', async (req, res) => {
             res.json({ reply, sessionId }); 
         } 
         
-        // --- 2. PHOTO GENERATION (Hugging Face API) ---
+        // --- 2. PHOTO GENERATION (Pollinations.ai - Backend Download Hack) ---
         else if (type === 'photo') {
             try {
-                // Call Hugging Face API (Stable Diffusion XL)
-                const hfRes = await axios.post(
-                    'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
-                    { inputs: prompt },
-                    { 
-                        headers: { 
-                            'Authorization': `Bearer ${process.env.HF_API_KEY}`,
-                            'Content-Type': 'application/json'
-                        },
-                        // ব্রাউজারে ব্রোকেন ছবি ঠেকাতে আমরা সার্ভারেই ছবি বাইনারি হিসেবে রিসিভ করব
-                        responseType: 'arraybuffer' 
-                    }
-                );
+                // ইউজার যে লেখা দিয়েছে (Prompt), সেটাকে URL-এ ব্যবহারের উপযোগী করা হচ্ছে
+                const safePrompt = encodeURIComponent(prompt);
                 
-                // বাইনারি ডেটাকে Base64 এ কনভার্ট করে সরাসরি ফ্রন্টএন্ডে পাঠানো হচ্ছে
-                const base64Image = Buffer.from(hfRes.data, 'binary').toString('base64');
+                // Pollinations.ai থেকে ছবি নেওয়ার জন্য URL তৈরি করা হচ্ছে
+                const pollUrl = `https://image.pollinations.ai/prompt/${safePrompt}?width=1024&height=1024&nologo=true`;
+                
+                // Railway সার্ভার নিজে ছবিটি ডাউনলোড করছে (ব্রাউজারকে ভরসা না করে)
+                const imgRes = await axios.get(pollUrl, { 
+                    responseType: 'arraybuffer', // ছবিটি বাইনারি ডেটা হিসেবে নেওয়া হচ্ছে
+                    timeout: 30000 // ছবি জেনারেট হতে সময় লাগলে ৩০ সেকেন্ড পর্যন্ত অপেক্ষা করবে
+                });
+                
+                // ডাউনলোড করা ছবিটি (Binary) কে টেক্সট (Base64) এ রূপান্তর করা হচ্ছে
+                const base64Image = Buffer.from(imgRes.data, 'binary').toString('base64');
                 const imageUrl = `data:image/jpeg;base64,${base64Image}`;
                 
-                const reply = `Here is your generated image:\n\n<img src="${imageUrl}" alt="Generated Image" style="border-radius: 12px; margin-top: 10px; max-width: 100%; height: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />`;
+                // ডিরেক্ট ইমেজ ট্যাগ দিয়ে ইউজারকে চ্যাটে দেখানো হচ্ছে
+                const reply = `Here is your generated image:\n\n<img src="${imageUrl}" alt="${prompt}" style="border-radius: 12px; margin-top: 10px; max-width: 100%; height: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />`;
                 
                 if(user.plan !== 'PRO' && !['Owner', 'Admin'].includes(user.badge)) {
                     await pool.query(`UPDATE users SET msg_count = msg_count + 1 WHERE email = $1`, [userEmail]);
@@ -244,18 +243,8 @@ app.post('/api/request', async (req, res) => {
                 
                 res.json({ reply, sessionId });
             } catch (imgErr) {
-                // এররের আসল কারণ বের করা হচ্ছে যাতে ফ্রন্টএন্ডে দেখা যায়
-                let exactError = imgErr.message;
-                if(imgErr.response && imgErr.response.data) {
-                    try {
-                        const jsonError = JSON.parse(Buffer.from(imgErr.response.data).toString('utf8'));
-                        exactError = jsonError.error || jsonError.detail || exactError;
-                    } catch(e) { 
-                        exactError = imgErr.message; 
-                    }
-                }
-                console.error("HF Image Error:", exactError);
-                res.status(500).json({ reply: `Image Error: ${exactError}` });
+                console.error("Pollinations Image Error:", imgErr.message);
+                res.status(500).json({ reply: "Image Error: Pollinations server is busy or took too long. Please try again with a simpler prompt." });
             }
         }
 
