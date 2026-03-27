@@ -15,8 +15,8 @@
         .header-icon { color: #4d4d4d; cursor: pointer; font-size: 18px; padding: 8px; border-radius: 6px; transition: 0.2s; }
         .get-plus-btn { background-color: #f4f0ff; color: #8e59ff; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; border: none; }
         .input-wrapper { background-color: #f4f4f4; border-radius: 30px; display: flex; align-items: center; padding: 8px 12px; max-width: 750px; width: 100%; margin: 0 auto; box-shadow: 0 0 15px rgba(0,0,0,0.02); }
-        .input-wrapper input { background: transparent; border: none; outline: none; flex-grow: 1; font-size: 16px; padding: 8px 12px; color: #0d0d0d; }
-        .round-btn { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; background-color: #000; color: #fff;}
+        .input-wrapper input { background: transparent; border: none; outline: none; flex-grow: 1; font-size: 16px; padding: 8px 12px; color: #0d0d0d; width: 100%; }
+        .round-btn { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; background-color: #000; color: #fff; transition: 0.2s;}
         .icon-btn { color: #666; font-size: 18px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: 0.2s; }
         .icon-btn.active { color: #8e59ff; background-color: #f4f0ff; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
@@ -56,10 +56,19 @@
                     <div class="icon-btn" id="modePhoto" onclick="setMode('photo')"><i class="fa-solid fa-image"></i></div>
                     <div class="icon-btn" id="modeVideo" onclick="setMode('video')"><i class="fa-solid fa-film"></i></div>
                 </div>
-                <input type="text" id="userInput" placeholder="Ask anything (DeepSeek)..." class="ml-2">
-                <div class="flex items-center gap-2 pr-1">
-                    <div onclick="processRequest()" class="round-btn hover:bg-gray-800 transition">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5v14M7 5v14M22 9v6M2 9v6"/></svg>
+                
+                <input type="text" id="userInput" placeholder="Ask anything (DeepSeek)..." class="ml-2" oninput="toggleSendIcon()">
+                
+                <div class="flex items-center gap-2 pr-1 ml-2">
+                    <div id="micBtn" onclick="startVoiceRecognition()" class="icon-btn hover:bg-gray-200">
+                        <i class="fa-solid fa-microphone"></i>
+                    </div>
+                    
+                    <div id="sendBtn" onclick="processRequest()" class="round-btn hover:bg-gray-800 hidden">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
                     </div>
                 </div>
             </div>
@@ -106,13 +115,57 @@
             document.getElementById('userInput').placeholder = placeholder;
         }
 
+        // --- NEW: Toggle Mic & Send Icon Logic ---
+        function toggleSendIcon() {
+            const inputVal = document.getElementById('userInput').value.trim();
+            const micBtn = document.getElementById('micBtn');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            if(inputVal.length > 0) {
+                micBtn.classList.add('hidden');
+                sendBtn.classList.remove('hidden');
+            } else {
+                micBtn.classList.remove('hidden');
+                sendBtn.classList.add('hidden');
+            }
+        }
+
+        // --- NEW: Voice Recognition Logic ---
+        function startVoiceRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return alert("Your browser does not support voice input. Try Chrome.");
+            
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US'; // English by default
+            const micIcon = document.querySelector('#micBtn i');
+            
+            micIcon.classList.remove('fa-microphone');
+            micIcon.classList.add('fa-microphone-lines', 'text-red-500', 'fa-fade');
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('userInput').value += transcript + " ";
+                toggleSendIcon();
+            };
+
+            recognition.onend = function() {
+                micIcon.classList.add('fa-microphone');
+                micIcon.classList.remove('fa-microphone-lines', 'text-red-500', 'fa-fade');
+            };
+
+            recognition.start();
+        }
+
         async function processRequest() {
             const prompt = document.getElementById('userInput').value;
             if(!prompt) return;
 
             document.getElementById('welcomeText').style.display = 'none';
             appendMessage('user', prompt);
+            
+            // Clear input and reset icons
             document.getElementById('userInput').value = '';
+            toggleSendIcon();
 
             const loadingId = "loader-" + Date.now();
             appendMessage('ai', "Thinking...", loadingId);
@@ -146,6 +199,14 @@
             document.getElementById('messages').appendChild(div);
             document.getElementById('chatWindow').scrollTop = document.getElementById('chatWindow').scrollHeight;
         }
+
+        // Enter press support
+        document.getElementById("userInput").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                processRequest();
+            }
+        });
 
         async function submitPayment() {
             const phone = document.getElementById('userPhone').value;
