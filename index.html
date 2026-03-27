@@ -8,12 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; color: #0d0d0d; margin: 0; padding: 0; }
-        
-        /* Animations */
         @keyframes fadeUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-up { animation: fadeUp 0.4s ease-out forwards; }
-        
-        /* Toast Popup Styles */
         #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { background: #333; color: #fff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); display: flex; align-items: center; gap: 8px; }
         .toast.show { opacity: 1; transform: translateY(0); }
@@ -26,7 +22,8 @@
         .sidebar-item:hover { background-color: #ececec; }
         .history-item { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: #4b5563; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .history-item:hover { background-color: #e5e7eb; }
-        .history-item.active-session { background-color: #e5e5e5; font-weight: 600; }
+        .history-item.active-session { background-color: #e5e5e5; font-weight: 600; color: #000; }
+        
         .header-icon { color: #4d4d4d; cursor: pointer; font-size: 18px; padding: 8px; border-radius: 6px; transition: 0.2s; }
         .get-plus-btn { background-color: #f4f0ff; color: #8e59ff; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; border: none; transition: 0.2s;}
         .get-plus-btn:hover { background-color: #ebe4ff; transform: scale(1.02); }
@@ -40,7 +37,9 @@
         .modal.active { display: flex; opacity: 1; }
         .modal-content { transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .modal.active .modal-content { transform: scale(1); }
-        .plan-card { transition: all 0.2s ease-in-out; }
+        
+        /* Message styling for code blocks (if AI sends code) */
+        pre { background: #1e1e1e; color: #fff; padding: 12px; border-radius: 8px; overflow-x: auto; margin-top: 10px; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden">
@@ -52,22 +51,40 @@
             <img src="/logo.png" alt="AuraGPT Logo" class="w-8 h-8 object-contain mix-blend-darken">
             <i class="fa-solid fa-xmark header-icon text-gray-500 md:hidden" onclick="toggleSidebar()"></i>
         </div>
-        <div class="sidebar-item font-medium border border-gray-200" onclick="startNewChat()">
+        <div class="sidebar-item font-medium border border-gray-200 shadow-sm" onclick="startNewChat()">
             <i class="fa-regular fa-pen-to-square" style="color:#000;"></i> New chat
         </div>
+        
         <div class="flex-grow overflow-y-auto mt-4 px-1 space-y-1" id="chatHistoryList">
             <p class="text-xs text-gray-400 font-bold px-2 mb-2 uppercase tracking-wider">Recent</p>
         </div>
-        <div class="sidebar-item text-red-500 mt-auto hover:bg-red-50" onclick="logout()"><i class="fa-solid fa-power-off"></i> Logout</div>
+        
+        <div class="mt-auto pt-4 border-t border-gray-200">
+            <div class="px-3 mb-3 flex items-center justify-between">
+                <div>
+                    <div class="text-sm font-bold text-gray-800 truncate w-32" id="sidebarUserName">Loading...</div>
+                    <div class="text-[11px] text-gray-500">Plan: <span id="sidebarUserPlan" class="font-bold text-[#10a37f]">FREE</span></div>
+                </div>
+                <button class="text-[10px] font-bold bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition" onclick="openPaymentModal()">UPGRADE</button>
+            </div>
+            <div class="sidebar-item text-red-500 hover:bg-red-50" onclick="logout()"><i class="fa-solid fa-power-off"></i> Logout</div>
+        </div>
     </div>
 
     <div class="flex-1 flex flex-col relative h-full bg-white w-full">
-        <header class="flex justify-between items-center px-4 py-3">
+        <header class="flex justify-between items-center px-4 py-3 border-b border-gray-50">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-bars-staggered header-icon text-gray-500" onclick="toggleSidebar()"></i>
-                <div class="cursor-pointer text-[17px] font-semibold text-gray-800">AURAGPT</div>
+                <div class="cursor-pointer text-[17px] font-semibold text-gray-800 hidden sm:block">AURAGPT</div>
             </div>
-            <button class="get-plus-btn" onclick="openPaymentModal()"><i class="fa-solid fa-sparkles"></i> Get Plus</button>
+            
+            <div class="flex bg-gray-100 p-1 rounded-xl mx-auto shadow-inner">
+                <button id="mod-fast" onclick="selectAIModel('fast')" class="px-4 py-1.5 rounded-lg text-sm font-bold bg-white shadow-sm text-gray-800 transition">⚡ Fast</button>
+                <button id="mod-pro" onclick="selectAIModel('pro')" class="px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500 hover:text-gray-800 transition">✨ Pro</button>
+                <button id="mod-think" onclick="selectAIModel('think')" class="px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500 hover:text-gray-800 transition">🧠 Think</button>
+            </div>
+
+            <button class="get-plus-btn hidden sm:flex" onclick="openPaymentModal()"><i class="fa-solid fa-sparkles"></i> Get Plus</button>
         </header>
 
         <div id="chatWindow" class="flex-1 flex flex-col items-center justify-start overflow-y-auto px-4 pt-10 pb-40 w-full scroll-smooth">
@@ -78,11 +95,11 @@
         <div class="absolute bottom-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 px-4">
             <div class="input-wrapper">
                 <div class="flex gap-1 pr-2 border-r border-gray-300">
-                    <div class="icon-btn active" id="modeChat" onclick="setMode('chat')"><i class="fa-solid fa-message"></i></div>
-                    <div class="icon-btn" id="modePhoto" onclick="setMode('photo')"><i class="fa-solid fa-image"></i></div>
-                    <div class="icon-btn" id="modeVideo" onclick="setMode('video')"><i class="fa-solid fa-film"></i></div>
+                    <div class="icon-btn active" id="modeChat" onclick="setMode('chat')" title="Normal Chat"><i class="fa-solid fa-message"></i></div>
+                    <div class="icon-btn" id="modePhoto" onclick="setMode('photo')" title="Photo AI"><i class="fa-solid fa-image"></i></div>
+                    <div class="icon-btn" id="modeVideo" onclick="setMode('video')" title="Video AI"><i class="fa-solid fa-film"></i></div>
                 </div>
-                <input type="text" id="userInput" placeholder="Ask anything (DeepSeek)..." class="ml-2" oninput="toggleSendIcon()">
+                <input type="text" id="userInput" placeholder="Ask anything..." class="ml-2" oninput="toggleSendIcon()">
                 <div class="flex items-center gap-2 pr-1 ml-2">
                     <div id="micBtn" onclick="startVoiceRecognition()" class="icon-btn hover:bg-gray-200"><i class="fa-solid fa-microphone"></i></div>
                     <div id="sendBtn" onclick="processRequest()" class="round-btn hover:bg-gray-800 hidden">
@@ -92,6 +109,7 @@
                     </div>
                 </div>
             </div>
+            <div class="text-center text-[10px] text-gray-400 mt-2">AuraGPT can make mistakes. Check important info.</div>
         </div>
     </div>
 
@@ -120,20 +138,14 @@
     </div>
 
     <script>
-        // Custom Toast Function
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            const icon = type === 'success' ? '<i class="fa-solid fa-check-circle"></i>' : '<i class="fa-solid fa-circle-exclamation"></i>';
             toast.className = `toast ${type}`;
-            toast.innerHTML = `${icon} ${message}`;
+            toast.innerHTML = (type === 'success' ? '<i class="fa-solid fa-check-circle"></i> ' : '<i class="fa-solid fa-circle-exclamation"></i> ') + message;
             container.appendChild(toast);
-            
             setTimeout(() => toast.classList.add('show'), 10);
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
         }
 
         function copyNumber() {
@@ -145,6 +157,40 @@
         if(!userEmail) window.location.href = '/';
 
         let currentMode = 'chat', selectedPlan = 'PLUS', currentSessionId = null;
+        let currentAIModel = 'fast'; 
+        let currentUserPlan = 'FREE';
+
+        // Fetch User Status
+        async function fetchUserStatus() {
+            try {
+                const res = await fetch(`/api/user/status?email=${userEmail}`);
+                const data = await res.json();
+                currentUserPlan = data.plan;
+                document.getElementById('sidebarUserName').innerText = data.name;
+                document.getElementById('sidebarUserPlan').innerText = data.plan;
+                if(data.plan === 'PRO') document.getElementById('sidebarUserPlan').classList.replace('text-[#10a37f]', 'text-red-500');
+            } catch (e) {}
+        }
+
+        // Model Selection Logic
+        function selectAIModel(model) {
+            if (model === 'pro' && !['PLUS', 'PRO'].includes(currentUserPlan)) {
+                showToast('✨ Pro model requires PLUS or PRO plan!', 'error');
+                openPaymentModal();
+                return;
+            }
+            currentAIModel = model;
+            ['fast', 'pro', 'think'].forEach(m => {
+                const btn = document.getElementById('mod-' + m);
+                if(m === model) {
+                    btn.classList.add('bg-white', 'shadow-sm', 'text-gray-800');
+                    btn.classList.remove('text-gray-500');
+                } else {
+                    btn.classList.remove('bg-white', 'shadow-sm', 'text-gray-800');
+                    btn.classList.add('text-gray-500');
+                }
+            });
+        }
 
         async function loadHistorySidebar() {
             try {
@@ -161,7 +207,8 @@
                 }
             } catch (e) {}
         }
-        window.onload = loadHistorySidebar;
+        
+        window.onload = () => { fetchUserStatus(); loadHistorySidebar(); };
 
         function startNewChat() {
             currentSessionId = null;
@@ -174,7 +221,7 @@
         async function loadChatSession(sessionId) {
             currentSessionId = sessionId;
             document.getElementById('welcomeText').style.display = 'none';
-            document.getElementById('messages').innerHTML = '<div class="text-center text-gray-400 mt-10"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading...</div>';
+            document.getElementById('messages').innerHTML = '<div class="text-center text-gray-400 mt-10"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading context...</div>';
             try {
                 const res = await fetch(`/api/history/messages?session_id=${sessionId}`);
                 const messages = await res.json();
@@ -185,7 +232,7 @@
                 });
                 loadHistorySidebar();
                 if(window.innerWidth < 768) toggleSidebar();
-            } catch (e) {}
+            } catch (e) { document.getElementById('messages').innerHTML = '<div class="text-center text-red-500">Failed to load chat history.</div>'; }
         }
 
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
@@ -208,7 +255,7 @@
             currentMode = mode;
             document.querySelectorAll('.icon-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
-            document.getElementById('userInput').placeholder = mode === 'chat' ? "Ask anything (DeepSeek)..." : (mode === 'photo' ? "Describe photo..." : "Describe video (Runway)...");
+            document.getElementById('userInput').placeholder = mode === 'chat' ? "Ask anything..." : (mode === 'photo' ? "Describe photo..." : "Describe video...");
         }
 
         function toggleSendIcon() {
@@ -230,15 +277,16 @@
             recognition.start();
         }
 
+        function formatCodeBlocks(text) {
+            return text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+        }
+
         async function processRequest() {
             const prompt = document.getElementById('userInput').value;
             if(!prompt) return;
 
             document.getElementById('welcomeText').style.display = 'none';
             appendMessage('user', prompt);
-            
-            const icon = currentMode === 'video' ? 'fa-film' : (currentMode === 'photo' ? 'fa-image' : 'fa-message');
-            document.getElementById('chatHistoryList').insertAdjacentHTML('afterbegin', `<div class="history-item animate-fade-up"><i class="fa-solid ${icon} mr-2 text-gray-400"></i>${prompt}</div>`);
             
             document.getElementById('userInput').value = '';
             toggleSendIcon();
@@ -249,16 +297,15 @@
             try {
                 const res = await fetch('/api/request', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ prompt, type: currentMode, userEmail, sessionId: currentSessionId })
+                    body: JSON.stringify({ prompt, type: currentMode, userEmail, sessionId: currentSessionId, modelChoice: currentAIModel })
                 });
                 const data = await res.json();
                 if(data.sessionId) currentSessionId = data.sessionId; 
                 
-                // If API fails, show the exact error message
                 if(res.status !== 200) {
                     document.getElementById(loadingId).innerHTML = `<span class="text-red-500"><i class="fa-solid fa-triangle-exclamation"></i> ${data.reply || data.error}</span>`;
                 } else if(data.reply) { 
-                    document.getElementById(loadingId).innerText = data.reply; 
+                    document.getElementById(loadingId).innerHTML = formatCodeBlocks(data.reply.replace(/\n/g, '<br>')); 
                 } else if(data.id) { 
                     document.getElementById(loadingId).innerHTML = `Generating video... (Task ID: ${data.id})`; 
                 }
@@ -272,7 +319,7 @@
             const bubble = document.createElement('div');
             if(id) bubble.id = id;
             bubble.className = role === 'user' ? 'bg-[#f4f4f4] text-[#0d0d0d] px-5 py-3 rounded-3xl max-w-[70%]' : 'text-[#0d0d0d] py-3 max-w-[100%] leading-relaxed';
-            bubble.innerHTML = content;
+            bubble.innerHTML = formatCodeBlocks(content.replace(/\n/g, '<br>'));
             div.appendChild(bubble);
             document.getElementById('messages').appendChild(div);
             document.getElementById('chatWindow').scrollTop = document.getElementById('chatWindow').scrollHeight;
