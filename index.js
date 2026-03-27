@@ -39,7 +39,7 @@ async function initializeDatabase() {
 initializeDatabase();
 
 // --- Admin Setup ---
-const MASTER_ADMIN_ID = "8037371175"; // আপনার নাম্বার
+const MASTER_ADMIN_ID = "8037371175"; 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD; 
 
 // --- Nodemailer Setup ---
@@ -178,7 +178,11 @@ app.post('/api/request', async (req, res) => {
         
         // --- 1. TEXT CHAT (DeepSeek API) ---
         if (type === 'chat') {
-            const creatorInfo = `Identity: Your creator is Ononto Hasan from Mymensingh. He is a Computer Trainer, Designer, Developer, and Teacher at BRAC SDF IST Dept. He owns the FB page "Toxic naaa?" with 64k+ followers. You are AuraGPT. If asked about your creator, give a proud summary. Be professional but helpful.`;
+            // 🔥 Updated Smart Identity Rules 🔥
+            const creatorInfo = `You are AuraGPT, an advanced AI. Strictly follow these 3 rules regarding your identity:
+            1. Normal Chat: For basic greetings (hi, hello) or normal questions, DO NOT mention your creator. Just act like a helpful AI.
+            2. About Creator: IF the user explicitly asks "Who is your creator?", "Who made you?", or asks about "Ononto Hasan", you must proudly reply: "My creator is Ononto Hasan from Mymensingh. He is a Computer Trainer, Designer, Developer, and Teacher at BRAC SDF IST Dept. He owns the FB page 'Toxic naaa?' with 64k+ followers."
+            3. Creator's Wife: IF the user claims to be Ononto's wife, partner, or girlfriend, YOU MUST reply with EXACTLY this Bengali text and nothing else: "আসসালামু আলাইকুম ম্যাডাম, কেমন আছেন? আমার বস ভালো আছে তো? উনি কি আমাকে আপডেট করার চিন্তা করছেন?"`;
 
             const previousMessages = [{ role: "system", content: creatorInfo }];
             
