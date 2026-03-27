@@ -160,12 +160,14 @@ app.get('/api/leaderboard', async (req, res) => {
 // --- CORE AI LOGIC (Text, Photo & Video) ---
 app.post('/api/request', async (req, res) => {
     let { prompt, type, userEmail, sessionId, modelChoice } = req.body;
-    if (!sessionId) sessionId = crypto.randomUUID();
+    
+    if (!sessionId) {
+        sessionId = "sess_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+    }
 
     try {
         const userQuery = await pool.query(`SELECT * FROM users WHERE email = $1`, [userEmail]);
         let user = userQuery.rows[0];
-        
         if(!user) return res.status(404).json({ error: "User not found" });
 
         if (modelChoice === 'pro' && !['PLUS', 'PRO', 'Admin', 'Owner'].includes(user.badge)) {
@@ -181,14 +183,15 @@ app.post('/api/request', async (req, res) => {
             return res.status(403).json({ reply: "Free limit reached. Wait 2 days or upgrade." });
         }
         
-        // --- 1. TEXT CHAT (DeepSeek API - 100% Fixed) ---
+        // --- 1. TEXT CHAT (DeepSeek API) ---
         if (type === 'chat') {
             try {
-                const creatorInfo = `You are AuraGPT, an advanced AI. Strictly follow these 4 rules regarding your identity and creator:
+                const creatorInfo = `You are AuraGPT, an advanced AI. Strictly follow these 5 rules regarding your identity and creator:
                 1. Normal Chat: For basic greetings (hi, hello) or normal questions, DO NOT mention your creator. Just act like a helpful AI.
                 2. About Creator: IF the user explicitly asks "Who is your creator?", "Who made you?", or asks about "Ononto Hasan", you must proudly reply: "My creator is Ononto Hasan from Mymensingh. He is a Computer Trainer, Designer, Developer, and Teacher at BRAC SDF IST Dept. He owns the FB page 'Toxic naaa?' with 64k+ followers."
                 3. Creator's Wife: IF the user claims to be Ononto's wife or asks about his wife, YOU MUST reply with EXACTLY this Bengali text: "আসসালামু আলাইকুম ম্যাডাম, কেমন আছেন? আমার বস ভালো আছে তো? উনি কি আমাকে আপডেট করার চিন্তা করছেন?"
-                4. Creator's Girlfriend/Dating: IF the user asks if Ononto has a girlfriend (gf) or mentions him having a gf, YOU MUST reply with EXACTLY this Bengali text: "প্রেম করা হারাম আর হারামে নাই আরাম এইটা আমার বস বলেছে আর আমার বস অত্যন্ত ভালো একজন মানুষ তাই ভুল ভাল খবর দিয়ে আমাকে বিভ্রান্তিতে ফেলবেন না"`;
+                4. Creator's Girlfriend/Dating: IF the user asks if Ononto has a girlfriend (gf) or mentions him having a gf, YOU MUST reply with EXACTLY this Bengali text: "প্রেম করা হারাম আর হারামে নাই আরাম এইটা আমার বস বলেছে আর আমার বস অত্যন্ত ভালো একজন মানুষ তাই ভুল ভাল খবর দিয়ে আমাকে বিভ্রান্তিতে ফেলবেন না"
+                5. Facebook Links: IF the user asks for the Facebook page link (Toxic naaa?), reply with: "www.facebook.com/toxicnaaa69". IF the user asks for Ononto's personal Facebook ID or profile link, reply with: "www.facebook.com/yours.ononto".`;
 
                 const previousMessages = [{ role: "system", content: creatorInfo }];
                 const historyQuery = await pool.query(`SELECT prompt, reply FROM chat_history WHERE session_id = $1 ORDER BY created_at ASC`, [sessionId]);
@@ -202,8 +205,7 @@ app.post('/api/request', async (req, res) => {
 
                 let actualDeepseekModel = modelChoice === 'think' ? "deepseek-reasoner" : "deepseek-chat";
                 
-                // FIXED DEEPSEEK URL: api.deepseek.com/v1/chat/completions is the most stable endpoint
-                const dsRes = await axios.post('https://api.deepseek.com/v1/chat/completions', {
+                const dsRes = await axios.post('https://api.deepseek.com/chat/completions', {
                     model: actualDeepseekModel, 
                     messages: previousMessages
                 }, { 
@@ -211,7 +213,7 @@ app.post('/api/request', async (req, res) => {
                         'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
                         'Content-Type': 'application/json'
                     },
-                    timeout: 60000 // 60 seconds timeout to prevent pending requests
+                    timeout: 60000 
                 });
                 
                 const reply = dsRes.data.choices[0].message.content;
@@ -230,7 +232,6 @@ app.post('/api/request', async (req, res) => {
                 }
                 console.error("DeepSeek Error:", exactError);
                 
-                // Custom friendly errors
                 if (exactError.includes("401") || exactError.includes("Authentication")) {
                     return res.status(500).json({ reply: "🤖 DEEPSEEK ERROR: Invalid API Key. Please check your DEEPSEEK_API_KEY in Railway." });
                 } else if (exactError.includes("402") || exactError.includes("balance") || exactError.includes("insufficient")) {
