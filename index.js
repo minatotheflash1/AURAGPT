@@ -10,45 +10,25 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// Database Connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
-// --- অটোমেটিক ডাটাবেস টেবিল তৈরি ---
 async function initializeDatabase() {
     try {
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY, name VARCHAR(100), email VARCHAR(100) UNIQUE,
-                phone VARCHAR(20), dob DATE, password VARCHAR(255), plan VARCHAR(20) DEFAULT 'FREE',
-                msg_count INT DEFAULT 0, video_count INT DEFAULT 0, limit_reset_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                role VARCHAR(20) DEFAULT 'user'
-            );
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS otps (email VARCHAR(100) PRIMARY KEY, code VARCHAR(6), expires_at TIMESTAMP);
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS payments (
-                id SERIAL PRIMARY KEY, user_email VARCHAR(100), phone VARCHAR(20), trx_id VARCHAR(100) UNIQUE,
-                plan_requested VARCHAR(20), status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        // নতুন: চ্যাট হিস্ট্রি টেবিল
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS chat_history (
-                id SERIAL PRIMARY KEY, user_email VARCHAR(100), type VARCHAR(20), prompt TEXT, reply TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        console.log("✅ Database tables checked and ready!");
+        await pool.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(100), email VARCHAR(100) UNIQUE, phone VARCHAR(20), dob DATE, password VARCHAR(255), plan VARCHAR(20) DEFAULT 'FREE', msg_count INT DEFAULT 0, video_count INT DEFAULT 0, limit_reset_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, role VARCHAR(20) DEFAULT 'user');`);
+        await pool.query(`CREATE TABLE IF NOT EXISTS otps (email VARCHAR(100) PRIMARY KEY, code VARCHAR(6), expires_at TIMESTAMP);`);
+        await pool.query(`CREATE TABLE IF NOT EXISTS payments (id SERIAL PRIMARY KEY, user_email VARCHAR(100), phone VARCHAR(20), trx_id VARCHAR(100) UNIQUE, plan_requested VARCHAR(20), status VARCHAR(20) DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
+        await pool.query(`CREATE TABLE IF NOT EXISTS chat_history (id SERIAL PRIMARY KEY, user_email VARCHAR(100), type VARCHAR(20), prompt TEXT, reply TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
+        console.log("✅ Database ready!");
     } catch (err) { console.error("❌ DB init error:", err); }
 }
 initializeDatabase();
 
 const MASTER_ADMIN_ID = "8037371175";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD; // Railway থেকে পাসওয়ার্ড নেবে
+
 const transporter = nodemailer.createTransport({
     service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
 });
@@ -64,6 +44,7 @@ app.post('/api/send-otp', async (req, res) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     try {
         await pool.query(`INSERT INTO otps (email, code, expires_at) VALUES ($1, $2, NOW() + INTERVAL '10 minutes') ON CONFLICT (email) DO UPDATE SET code = $2, expires_at = NOW() + INTERVAL '10 minutes'`, [email, code]);
+        console.log(`[OTP] ${email}: ${code}`);
         await transporter.sendMail({ from: '"AURAGPT" <no-reply@auragpt.com>', to: email, subject: 'Your Verification Code', text: `Your code is: ${code}` });
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: "Failed to send OTP" }); }
@@ -94,7 +75,6 @@ app.post('/api/login', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Server error" }); }
 });
 
-// --- নতুন: চ্যাট হিস্ট্রি লোড করার API ---
 app.get('/api/history', async (req, res) => {
     const { email } = req.query;
     try {
@@ -126,24 +106,16 @@ app.post('/api/request', async (req, res) => {
             const dsRes = await axios.post('https://api.deepseek.com/v1/chat/completions', {
                 model: "deepseek-chat", messages: [{"role": "user", "content": prompt}]
             }, { headers: { 'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}` }});
-            
             const reply = dsRes.data.choices[0].message.content;
             if(user.plan !== 'PRO') await pool.query(`UPDATE users SET msg_count = msg_count + 1 WHERE email = $1`, [userEmail]);
-            
-            // ডাটাবেসে হিস্ট্রি সেভ করা
             await pool.query(`INSERT INTO chat_history (user_email, type, prompt, reply) VALUES ($1, $2, $3, $4)`, [userEmail, type, prompt, reply]);
-            
             res.json({ reply });
         } else if (type === 'video') {
             const rwRes = await axios.post('https://api.runwayml.com/v1/image_to_video', {
                 model: "gen3a_turbo", prompt_text: prompt
             }, { headers: { 'Authorization': `Bearer ${process.env.RUNWAY_API_KEY}`, 'X-Runway-Version': '2024-11-06' }});
-            
             if(user.plan !== 'PRO') await pool.query(`UPDATE users SET video_count = video_count + 1 WHERE email = $1`, [userEmail]);
-            
-            // ভিডিও রিকোয়েস্ট হিস্ট্রি সেভ করা
             await pool.query(`INSERT INTO chat_history (user_email, type, prompt, reply) VALUES ($1, $2, $3, $4)`, [userEmail, type, prompt, "Video Task ID: " + rwRes.data.id]);
-            
             res.json(rwRes.data);
         }
     } catch (error) { res.status(500).json({ reply: "API processing failed." }); }
@@ -157,7 +129,19 @@ app.post('/api/submit-payment', async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Failed to submit." }); }
 });
 
+// ================= ADMIN SECURE API =================
+
+// ১. Login Check Endpoint
+app.post('/api/admin/login', (req, res) => {
+    if (req.body.password === ADMIN_PASSWORD) { res.json({ success: true }); } 
+    else { res.status(401).json({ error: "Unauthorized" }); }
+});
+
+// ২. Secure Dashboard Data Endpoint
 app.get('/api/admin/dashboard-data', async (req, res) => {
+    // পাসওয়ার্ড চেক
+    if (req.headers.authorization !== ADMIN_PASSWORD) return res.status(401).json({ error: "Unauthorized" });
+    
     try {
         const users = await pool.query(`SELECT id, name, email, plan, msg_count, video_count FROM users ORDER BY id DESC`);
         const payments = await pool.query(`SELECT * FROM payments WHERE status = 'pending' ORDER BY created_at ASC`);
@@ -165,7 +149,11 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
     } catch (error) { res.status(500).json({ error: "Database error" }); }
 });
 
+// ৩. Secure Process Payment Endpoint
 app.post('/api/admin/process-payment', async (req, res) => {
+    // পাসওয়ার্ড চেক
+    if (req.headers.authorization !== ADMIN_PASSWORD) return res.status(401).json({ error: "Unauthorized" });
+
     const { paymentId, email, plan, action } = req.body;
     try {
         if (action === 'approve') {
