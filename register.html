@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register - AuraGPT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .input-field { width: 100%; padding: 12px; border: 1px solid #c2c8d0; border-radius: 6px; margin-bottom: 12px; outline: none; }
+        .input-field:focus { border-color: #10a37f; }
+        .btn-primary { width: 100%; background-color: #10a37f; color: white; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-primary:disabled { background-color: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen bg-white">
+    <div class="w-full max-w-[400px] px-8 py-10">
+        <div class="text-center mb-6">
+            <img src="/logo.png" alt="AuraGPT" class="w-12 h-12 mx-auto mix-blend-darken">
+            <h1 class="text-2xl font-bold mt-4">Create your account</h1>
+        </div>
+
+        <div id="step1">
+            <input type="text" id="name" class="input-field" placeholder="Full Name">
+            <input type="email" id="email" class="input-field" placeholder="Email address">
+            <input type="text" id="phone" class="input-field" placeholder="Phone Number (+880...)">
+            <input type="date" id="dob" class="input-field" title="Date of Birth">
+            <input type="password" id="password" class="input-field" placeholder="Create Password">
+            <button onclick="sendOTP()" class="btn-primary mt-2" id="sendOtpBtn">Send Verification Code</button>
+            <div class="text-center mt-4 text-sm"><a href="/" class="text-[#10a37f]">Already have an account? Log in</a></div>
+        </div>
+
+        <div id="step2" class="hidden">
+            <p class="text-sm text-gray-600 mb-4 text-center">We sent a code to your email from AURAGPT.</p>
+            <input type="text" id="otpCode" class="input-field text-center tracking-widest text-lg" placeholder="Enter 6-digit code" maxlength="6">
+            <button onclick="verifyAndRegister()" class="btn-primary">Verify & Register</button>
+        </div>
+    </div>
+
+    <script>
+        async function sendOTP() {
+            const email = document.getElementById('email').value;
+            if(!email) return alert("Email is required!");
+            
+            document.getElementById('sendOtpBtn').innerText = "Sending...";
+            document.getElementById('sendOtpBtn').disabled = true;
+
+            const res = await fetch('/api/send-otp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email })
+            });
+
+            if(res.ok) {
+                document.getElementById('step1').classList.add('hidden');
+                document.getElementById('step2').classList.remove('hidden');
+            } else {
+                alert("Error sending OTP");
+                document.getElementById('sendOtpBtn').disabled = false;
+                document.getElementById('sendOtpBtn').innerText = "Send Verification Code";
+            }
+        }
+
+        async function verifyAndRegister() {
+            const data = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                dob: document.getElementById('dob').value,
+                password: document.getElementById('password').value,
+                otp: document.getElementById('otpCode').value
+            };
+
+            const res = await fetch('/api/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+
+            if(res.ok) {
+                alert("Registration Successful! Please login.");
+                window.location.href = "/";
+            } else {
+                const err = await res.json();
+                alert(err.error || "Invalid OTP");
+            }
+        }
+    </script>
+</body>
+</html>
